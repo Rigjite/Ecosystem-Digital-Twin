@@ -1,5 +1,7 @@
 # Ecosystem Digital Twin — Agent Skill
 
+English | [Русский](README.ru.md)
+
 An [Agent Skill](https://agentskills.io) for designing and operating
 **digital twins of ecosystems**: ponds and lakes, river reaches,
 agricultural land, air basins, and flora/fauna conservation sites.
