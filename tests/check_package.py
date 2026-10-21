@@ -47,21 +47,31 @@ def parse_yaml(block):
         yaml = None
     if yaml is not None:
         return yaml.safe_load(block), "PyYAML"
-    data = {}
+    data, parent = {}, None
     for line in block.splitlines():
-        if not line.strip() or line.startswith((" ", "\t")):
+        if not line.strip() or line.lstrip().startswith("#"):
             continue
-        key, sep, value = line.partition(":")
+        nested = line.startswith((" ", "\t"))
+        key, sep, value = line.strip().partition(":")
         if not sep:
             raise ValueError(f"frontmatter line is not 'key: value': {line[:40]}")
         value = value.strip()
-        if value[:1] in "\"'":
+        if value and value[0] in "\"'":
             if len(value) < 2 or value[-1] != value[0]:
                 raise ValueError(f"unterminated quoted value for '{key}'")
             value = value[1:-1]
         elif ": " in value:
             raise ValueError(f"unquoted ': ' inside the value of '{key}' (invalid YAML)")
-        data[key.strip()] = value
+        if nested:
+            if parent is None:
+                raise ValueError(f"indented line without a parent key: {line[:40]}")
+            data[parent][key.strip()] = value
+        elif value == "":
+            parent = key.strip()
+            data[parent] = {}
+        else:
+            parent = None
+            data[key.strip()] = value
     return data, "minimal parser (install PyYAML for the strict check)"
 
 
@@ -142,6 +152,7 @@ def main(argv=None):
         "CHANGELOG.md": r"^## v([\d.]+)",
         "tests/TESTS.md": r"\(v([\d.]+)\)",
         "scripts/evidence_search.py": r"ecosystem-digital-twin/([\d.]+)",
+        "CITATION.cff": r'^version: "?([\d.]+)"?',
     }
     for rel, pat in checks.items():
         if not os.path.exists(os.path.join(ROOT, rel)):

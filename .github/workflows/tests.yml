@@ -1,0 +1,31 @@
+name: tests
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.9", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: ecosystem-digital-twin  # the folder must carry the skill's name
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Optional validators (strict YAML, RO-Crate)
+        run: python -m pip install --quiet pyyaml rocrate
+      - name: Unit and end-to-end tests
+        working-directory: ecosystem-digital-twin
+        run: python -m unittest discover -s tests -v
+      - name: Package lint
+        working-directory: ecosystem-digital-twin
+        run: python tests/check_package.py --strict

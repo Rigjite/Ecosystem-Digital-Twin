@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use this skill, please cite it as below."
+title: "Ecosystem Digital Twin — Agent Skill"
+type: software
+authors:
+  - family-names: Baldanova
+    given-names: Rigjita
+version: "2.0"
+date-released: "2026-10-21"
+license: CC-BY-4.0
+repository-code: "https://github.com/Rigjite/Ecosystem-Digital-Twin"
+abstract: >-
+  An Agent Skill for designing, building, auditing, and reporting digital
+  twins of ecosystems (ponds and lakes, river reaches, farmland, air basins,
+  conservation sites), with standard-library Python scripts that enforce its
+  rules: data quality gate, trend tests, calibration against naive baselines,
+  alert bands, uncertainty budgets, a pre-registered forecast registry,
+  sensitive-species coordinate generalization, and RO-Crate 1.1 provenance
+  packages.
+keywords:
+  - agent-skill
+  - digital-twin
+  - ecology
+  - environmental-monitoring
+  - water-quality
+  - ecological-forecasting
+  - ro-crate

@@ -38,10 +38,13 @@
   before fitting and reported against baselines; no bloom probability from
   two events; the chlorophyll forecast registered as a trial; the wetland
   effect labeled evidence-based with the lake response stated as a gap.
-- Tests: tests/test_scripts.py (43 unit and end-to-end tests, network-free), tests/check_package.py
+- Tests: tests/test_scripts.py (45 unit and end-to-end tests, network-free), tests/check_package.py
   (package lint), T19–T27 and a traceability table in TESTS.md. Contents
-  lists added to the four references over 100 lines. READMEs gain install
-  instructions (folder name must match the skill name).
+  lists added to the four references over 100 lines. READMEs rewritten for
+  the repository page (process diagram, install instructions — the folder
+  name must match the skill name — and an honest status section);
+  CITATION.cff for GitHub's citation button; GitHub Actions run the tests
+  and the strict lint on Python 3.9 and 3.12.
 
 ## v1.8 — 2026-10-20
 - Usability pack: three documents

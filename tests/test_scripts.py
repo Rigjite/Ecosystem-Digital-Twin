@@ -653,6 +653,33 @@ class TestEvidenceSearchOffline(unittest.TestCase):
         self.assertEqual((rec["first_author"], rec["year"], rec["doi"]), ("Ivanova", 2019, "10.3/q"))
 
 
+class TestLintParser(unittest.TestCase):
+    """The no-PyYAML fallback must still catch the v1.8 frontmatter defect."""
+
+    def setUp(self):
+        spec = importlib.util.spec_from_file_location("check_package", os.path.join(ROOT, "tests", "check_package.py"))
+        self.m = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(self.m)
+        self._saved = sys.modules.get("yaml")
+        sys.modules["yaml"] = None  # force the fallback parser
+
+    def tearDown(self):
+        if self._saved is None:
+            sys.modules.pop("yaml", None)
+        else:
+            sys.modules["yaml"] = self._saved
+
+    def test_unquoted_colon_rejected(self):
+        with self.assertRaises(ValueError):
+            self.m.parse_yaml("name: x\ndescription: Designs twins. Full cycle: scoping\n")
+
+    def test_nested_metadata_parsed(self):
+        data, parser = self.m.parse_yaml('name: x\ndescription: "a: b"\nmetadata:\n  version: "2.0"\n')
+        self.assertEqual(data["metadata"]["version"], "2.0")
+        self.assertEqual(data["description"], "a: b")
+        self.assertIn("minimal", parser)
+
+
 class TestPackage(unittest.TestCase):
     def test_package_lint_passes(self):
         code, out, _ = run(os.path.join("..", "tests", "check_package.py"))
