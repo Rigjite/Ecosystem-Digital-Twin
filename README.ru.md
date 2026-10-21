@@ -1,7 +1,7 @@
 # Цифровой двойник экосистемы — навык для ИИ-агентов
 
 [![tests](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml/badge.svg)](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml)
-![version 2.1](https://img.shields.io/badge/version-2.1-blue)
+![version 2.2](https://img.shields.io/badge/version-2.2-blue)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
@@ -20,7 +20,7 @@
 для заказчика (хозяйство, управляющий водоёмом, природоохранный проект,
 муниципалитет) и **исследовательский инструмент** для собственной науки.
 
-Текущая версия: **2.1** (2026-10-21). Лицензия: CC BY 4.0.
+Текущая версия: **2.2** (2026-10-21). Лицензия: CC BY 4.0.
 Текст навыка и справочники — на английском языке (`SKILL.md` и папка
 `references/`); эта страница — русское описание пакета.
 
@@ -126,8 +126,8 @@ python3 scripts/skill_scores.py continuous flows.csv \
 |---|---|---|
 | `scripts/qc_series.py` | 1 | Контроль качества: диапазон, скорость изменения, «залипание» датчика, дубли, пропуски, соседняя станция, точка разрыва; только флаги |
 | `scripts/evidence_search.py` | 1–5 | Поиск литературы по PubMed, Europe PMC, OpenAlex, Crossref; нормализованный JSON |
-| `scripts/trend_test.py` | 1–2 | Манн–Кендалл и наклон Сена по сегментам между разрывами; сезонный тест Кендалла; учёт автокорреляции |
-| `scripts/skill_scores.py` | 3–4 | Отложенная выборка, наивные эталоны, NSE/KGE/RMSE, POD/FAR/CSI, Брайер с таблицей надёжности |
+| `scripts/trend_test.py` | 1–2 | Манн–Кендалл и наклон Сена по сегментам между разрывами; сезонный тест Кендалла; поправка Хамеда–Рао на автокорреляцию |
+| `scripts/skill_scores.py` | 3–4 | Отложенная выборка, наивные эталоны с учётом горизонта прогноза, NSE/KGE/RMSE, POD/FAR/CSI, Брайер с таблицей надёжности |
 | `scripts/uncertainty_budget.py` | 3 | Бюджет неопределённости по источникам из ансамблей; интервал только из совместного ансамбля |
 | `scripts/alert_bands.py` | 4 | Жёлтая и красная зоны с источником порога и окном устойчивого превышения |
 | `scripts/registry.py` | 3–4 | Журнал прогнозов только на дозапись, с хеш-цепочкой; оценка строго в зарегистрированном виде |
@@ -160,7 +160,7 @@ python3 scripts/skill_scores.py continuous flows.csv \
 
 ## Статус и проверка
 
-- **Автоматически:** 47 юнит- и сквозных тестов и проверка пакета запускаются
+- **Автоматически:** 48 юнит- и сквозных тестов и проверка пакета запускаются
   при каждой отправке изменений (значок tests). Локально:
   `python3 -m unittest discover -s tests` и `python3 tests/check_package.py`.
 - **История оценок:** каждый раунд, его баллы, найденные и исправленные
@@ -183,7 +183,7 @@ python3 scripts/skill_scores.py continuous flows.csv \
 
 Кнопка **Cite this repository** на GitHub (из [`CITATION.cff`](CITATION.cff)) или:
 
-Балданова Р. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.1).
+Балданова Р. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.2).
 https://github.com/Rigjite/Ecosystem-Digital-Twin
 
 ## Лицензия

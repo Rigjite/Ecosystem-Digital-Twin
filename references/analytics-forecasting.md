@@ -52,9 +52,12 @@ Run on the harmonized history, before model fitting (Phase 2–3 inputs):
   percentiles, timing. Every anomaly claim is relative to this baseline.
 - **Trends** — direction and rate with autocorrelation-aware significance:
   `scripts/trend_test.py` runs Mann–Kendall with Sen's slope per segment
-  between registered breaks (trend-free pre-whitening when lag-1
-  autocorrelation is significant and sampling is regular), or the seasonal
-  Kendall test for monthly water-quality data. A trend across a registered
+  between registered breaks, with the Hamed–Rao (1998) variance correction
+  for autocorrelation (trend-free pre-whitening is available for
+  comparison but can overstate significance in strongly autocorrelated
+  series), or the seasonal Kendall test for monthly water-quality data. A
+  Pettitt change point is a flag, not a verdict: it also fires on a smooth
+  monotonic trend, so its cause is established before the series is split. A trend across a registered
   method break is reported as separate segments, never as one line.
 - **Anomalies and extremes** — exceedance counts, return periods for high
   and low extremes (flood, drought, heat), and how they are changing.

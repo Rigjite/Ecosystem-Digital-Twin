@@ -12,9 +12,21 @@ is never reported as the result.
                      variance summed over months, slope = median of
                      within-month slopes. Covariance between seasons is not
                      corrected (Hirsch & Slack 1984); this is stated in output.
-  --prewhiten auto   trend-free pre-whitening (Yue et al. 2002) when the lag-1
-                     autocorrelation of the detrended series is significant
-                     and sampling is regular; otherwise stated as uncorrected.
+  --autocorr hamed-rao (default)  variance correction for serial correlation
+                     (Hamed & Rao 1998, J. Hydrol. 204: 182-196): the
+                     series is detrended by Sen's slope, the autocorrelation
+                     of its ranks is computed, and only significant lags
+                     inflate (or deflate) var(S). The slope is unchanged;
+                     the p-value and the slope interval widen honestly.
+  --autocorr tfpw    trend-free pre-whitening (Yue et al. 2002). For strongly
+                     autocorrelated series it can make a trend look more
+                     significant than the uncorrected test does (seen on
+                     Lake Huron levels, lag-1 r = 0.76); kept for
+                     comparison, not as the default.
+  --autocorr none    no correction; a significant lag-1 autocorrelation is
+                     then reported as a warning (the p-value is optimistic).
+  Corrections need near-regular sampling; otherwise the result is stated
+  as uncorrected.
 Slopes are per year; time is converted to decimal years, so irregular
 sampling is handled by Sen's slope. Confidence interval of the slope follows
 Gilbert (1987). Fewer than --min-n values in a segment: no test, stated.
@@ -144,6 +156,38 @@ def sen_ci(slopes, var, alpha):
     return s[lo], s[hi]
 
 
+def average_ranks(values):
+    order = sorted(range(len(values)), key=lambda i: values[i])
+    ranks = [0.0] * len(values)
+    i = 0
+    while i < len(order):
+        j = i
+        while j + 1 < len(order) and values[order[j + 1]] == values[order[i]]:
+            j += 1
+        for k in range(i, j + 1):
+            ranks[order[k]] = (i + j) / 2.0 + 1.0
+        i = j + 1
+    return ranks
+
+
+def hamed_rao_factor(detrended, alpha):
+    """n/n* of Hamed & Rao (1998) from significant rank autocorrelations."""
+    n = len(detrended)
+    r = average_ranks(detrended)
+    m = sum(r) / n
+    den = sum((x - m) ** 2 for x in r)
+    if n < 4 or den == 0:
+        return 1.0, []
+    bound = ND.inv_cdf(1 - alpha / 2) / math.sqrt(n)
+    acc, lags = 0.0, []
+    for k in range(1, n - 2):
+        rho = sum((r[i] - m) * (r[i + k] - m) for i in range(n - k)) / den
+        if abs(rho) > bound:
+            acc += (n - k) * (n - k - 1) * (n - k - 2) * rho
+            lags.append(k)
+    return 1.0 + 2.0 * acc / (n * (n - 1) * (n - 2)), lags
+
+
 def lag1(xs):
     n = len(xs)
     if n < 3:
@@ -166,7 +210,7 @@ def regular(times):
     return sd / m <= 0.5
 
 
-def test_segment(times, values, alpha, prewhiten, seasonal, months):
+def test_segment(times, values, alpha, autocorr, seasonal, months):
     n = len(values)
     n_tested = n
     res = {"n": n, "warnings": []}
@@ -198,21 +242,31 @@ def test_segment(times, values, alpha, prewhiten, seasonal, months):
         res["lag1_autocorrelation_detrended"] = r1
         bound = ND.inv_cdf(1 - alpha / 2) / math.sqrt(n)
         significant = r1 is not None and abs(r1) > bound
-        apply = prewhiten == "tfpw" or (prewhiten == "auto" and significant)
-        if apply and not regular(times):
-            res["warnings"].append("serial correlation not corrected: sampling is irregular, "
-                                   "pre-whitening needs a near-regular series")
-            apply = False
-        elif significant and not apply:
-            res["warnings"].append("significant lag-1 autocorrelation left uncorrected: p-value is optimistic")
-        if apply and r1 is not None:
+        res["serial_correction"] = "none"
+        if autocorr != "none" and not regular(times):
+            if significant:
+                res["warnings"].append("serial correlation not corrected: sampling is irregular, "
+                                       "the corrections need a near-regular series")
+        elif autocorr == "hamed-rao":
+            factor, lags = hamed_rao_factor(detr, alpha)
+            if factor > 0:
+                var = var * factor
+                res["serial_correction"] = "variance correction (Hamed & Rao 1998)"
+                res["variance_factor_n_over_n_eff"] = factor
+                res["significant_rank_lags"] = len(lags)
+            else:
+                res["warnings"].append("Hamed-Rao factor not positive: correction skipped, p-value uncertain")
+        elif autocorr == "tfpw" and r1 is not None:
             yp = [detr[i] - r1 * detr[i - 1] for i in range(1, n)]
             blended = [y + slope0 * t for y, t in zip(yp, times[1:])]
             s_val, var = mk_s_var(blended)
             n_tested = len(blended)
-            res["prewhitening"] = "trend-free pre-whitening (Yue et al. 2002)"
-        else:
-            res["prewhitening"] = "none"
+            res["serial_correction"] = "trend-free pre-whitening (Yue et al. 2002)"
+            if significant:
+                res["warnings"].append("TFPW on a strongly autocorrelated series can overstate significance; "
+                                       "compare with --autocorr hamed-rao")
+        elif significant:
+            res["warnings"].append("significant lag-1 autocorrelation left uncorrected: p-value is optimistic")
     z = z_from(s_val, var)
     p = 2 * (1 - ND.cdf(abs(z)))
     slope = median(slopes) if slopes else None
@@ -252,7 +306,9 @@ def main(argv=None):
     ap.add_argument("--breaks-file", help="CSV bias and breaks register")
     ap.add_argument("--breaks-date-col", default="date")
     ap.add_argument("--seasonal", choices=["none", "month"], default="none")
-    ap.add_argument("--prewhiten", choices=["auto", "tfpw", "none"], default="auto")
+    ap.add_argument("--autocorr", choices=["hamed-rao", "tfpw", "none"], default="hamed-rao",
+                    help="serial-correlation handling for the non-seasonal test")
+    ap.add_argument("--prewhiten", choices=["auto", "tfpw", "none"], help=argparse.SUPPRESS)  # v2.0 alias
     ap.add_argument("--alpha", type=float, default=0.05)
     ap.add_argument("--min-n", type=int, default=8)
     a = ap.parse_args(argv)
@@ -274,6 +330,7 @@ def main(argv=None):
         print(f"error: {exc}", file=sys.stderr)
         return 2
     recs.sort(key=lambda x: x[0])
+    autocorr = {"auto": "hamed-rao", "tfpw": "tfpw", "none": "none"}.get(a.prewhiten, a.autocorr)
     edges = [None] + breaks + [None]
     segments = []
     for lo, hi in zip(edges, edges[1:]):
@@ -286,7 +343,7 @@ def main(argv=None):
         times = [decimal_year(t) for t, _ in seg]
         values = [v for _, v in seg]
         months = [t.month for t, _ in seg]
-        res = test_segment(times, values, a.alpha, a.prewhiten, a.seasonal == "month", months)
+        res = test_segment(times, values, a.alpha, autocorr, a.seasonal == "month", months)
         res.update(label)
         res["first"], res["last"] = seg[0][0].date().isoformat(), seg[-1][0].date().isoformat()
         segments.append(res)

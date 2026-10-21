@@ -1,7 +1,7 @@
 # Ecosystem Digital Twin — Agent Skill
 
 [![tests](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml/badge.svg)](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml)
-![version 2.1](https://img.shields.io/badge/version-2.1-blue)
+![version 2.2](https://img.shields.io/badge/version-2.2-blue)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
@@ -19,7 +19,7 @@ touches the real system. It serves two uses, in this order: a **consulting
 product** for a client (a farm, a water-body manager, a conservation project,
 a municipality) and a **research instrument** for the operator's own science.
 
-Current version: **2.1** (2026-10-21). License: CC BY 4.0.
+Current version: **2.2** (2026-10-21). License: CC BY 4.0.
 
 ## Why this skill
 
@@ -122,8 +122,8 @@ threshold or fails to beat a naive baseline.
 |---|---|---|
 | `scripts/qc_series.py` | 1 | Data quality gate: range, rate, stuck sensor, duplicates, gaps, neighbor station, change point; flags only, never edits |
 | `scripts/evidence_search.py` | 1–5 | Literature retrieval across PubMed, Europe PMC, OpenAlex, Crossref; normalized JSON |
-| `scripts/trend_test.py` | 1–2 | Mann–Kendall / Sen slope per segment between registered breaks; seasonal Kendall; autocorrelation handling |
-| `scripts/skill_scores.py` | 3–4 | Declared hold-out, naive baselines, NSE/KGE/RMSE, POD/FAR/CSI, Brier with reliability |
+| `scripts/trend_test.py` | 1–2 | Mann–Kendall / Sen slope per segment between registered breaks; seasonal Kendall; Hamed–Rao correction for autocorrelation |
+| `scripts/skill_scores.py` | 3–4 | Declared hold-out, horizon-matched naive baselines, NSE/KGE/RMSE, POD/FAR/CSI, Brier with reliability |
 | `scripts/uncertainty_budget.py` | 3 | Uncertainty budget by source from ensembles; an interval only from a joint ensemble |
 | `scripts/alert_bands.py` | 4 | Amber/red bands with named anchors and sustained-breach windows |
 | `scripts/registry.py` | 3–4 | Append-only, hash-chained forecast registry; scores forecasts exactly as issued |
@@ -156,7 +156,7 @@ threshold or fails to beat a naive baseline.
 
 ## Status and evaluation
 
-- **Automated:** 47 unit and end-to-end tests plus the package lint run on
+- **Automated:** 48 unit and end-to-end tests plus the package lint run on
   every push (see the tests badge). Run them locally with
   `python3 -m unittest discover -s tests` and `python3 tests/check_package.py`.
 - **Evaluation history:** every round, its scores, and the defects found and
@@ -179,7 +179,7 @@ Issues and suggestions are welcome.
 
 Use GitHub's **Cite this repository** button (from [`CITATION.cff`](CITATION.cff)), or:
 
-Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.1).
+Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.2).
 https://github.com/Rigjite/Ecosystem-Digital-Twin
 
 ## License

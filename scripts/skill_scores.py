@@ -6,9 +6,13 @@ Three subcommands, each reading one CSV and printing JSON:
 
   continuous  observed vs simulated series. Scores the hold-out period only
               (rows after --train-end). Naive baselines are built without
-              looking at the hold-out: persistence (previous observation) and
-              climatology (training-period mean per month, or per day of year,
-              or overall). Reports bias, PBIAS, MAE, RMSE, NSE, KGE (Gupta et
+              looking at the hold-out: persistence and climatology
+              (training-period mean per month, or per day of year, or
+              overall). Persistence must match the forecast horizon:
+              --persistence rolling (default) repeats the previous
+              observation, the fair baseline for one-step-ahead forecasts;
+              --persistence fixed repeats the last training observation, the
+              fair baseline for forecasts all issued at the end of training. Reports bias, PBIAS, MAE, RMSE, NSE, KGE (Gupta et
               al. 2009) and the skill score 1 - MSE_model / MSE_baseline.
               Declared thresholds (--thresholds "NSE>=0.5,KGE>=0.3") and the
               rule "must beat every naive baseline" decide pass or fail.
@@ -189,7 +193,7 @@ def cmd_continuous(a):
             pairs.append((o, s))
             pers.append(last_obs)
             climv.append(clim.get(key(t), overall))
-        if o is not None:
+        if o is not None and a.persistence == "rolling":
             last_obs = o
     if len(pairs) < 3:
         raise ValueError(f"only {len(pairs)} scorable hold-out pairs; need at least 3")
@@ -201,7 +205,8 @@ def cmd_continuous(a):
     m["skill_vs_persistence"] = 1 - m["mse"] / mse_pers if mse_pers > 0 else None
     m["skill_vs_climatology"] = 1 - m["mse"] / mse_clim if mse_clim > 0 else None
     baseline_checks = [
-        {"baseline": "persistence", "mse_baseline": mse_pers,
+        {"baseline": "persistence (" + ("previous observation" if a.persistence == "rolling"
+                                         else "last training observation") + ")", "mse_baseline": mse_pers,
          "pass": m["skill_vs_persistence"] is not None and m["skill_vs_persistence"] > 0},
         {"baseline": f"climatology ({a.season}, training period only)", "mse_baseline": mse_clim,
          "pass": m["skill_vs_climatology"] is not None and m["skill_vs_climatology"] > 0},
@@ -338,6 +343,8 @@ def main(argv=None):
     c.add_argument("--train-end", help="last timestamp of the calibration period (ISO date)")
     c.add_argument("--no-holdout", action="store_true", help="score in-sample fit (labeled as such)")
     c.add_argument("--season", choices=["month", "doy", "none"], default="month")
+    c.add_argument("--persistence", choices=["rolling", "fixed"], default="rolling",
+                   help="rolling: one-step forecasts; fixed: forecasts issued at the end of training")
     c.add_argument("--thresholds", help='declared pass rules, e.g. "NSE>=0.5,abs_pbias<=25"')
     e = sub.add_parser("events", help="binary event forecasts")
     e.add_argument("input")

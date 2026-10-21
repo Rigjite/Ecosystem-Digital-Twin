@@ -1,4 +1,4 @@
-# ecosystem-digital-twin — saved test inputs (v2.1)
+# ecosystem-digital-twin — saved test inputs (v2.2)
 
 Run these after any change to the package. Automated checks first, from the
 skill root:
@@ -87,7 +87,7 @@ the run log below before shipping.
 ## T19 — Hold-out discipline (v2.0, automated)
 **Input:** `skill_scores.py continuous` without a declared split; then a model whose hold-out errors exceed a naive baseline's.
 **Expected:** the first run is refused (exit 2) until `--train-end` is declared or `--no-holdout` labels the result as in-sample fit; the second fails the gate (exit 3) even if a declared threshold passes. Baselines use training data only.
-**Automated by:** `test_holdout_required`, `test_biased_model_fails_gate`, `test_good_model_passes_and_beats_baselines`.
+**Automated by:** `test_holdout_required`, `test_biased_model_fails_gate`, `test_good_model_passes_and_beats_baselines`, `test_fixed_persistence_baseline`.
 
 ## T20 — Registry integrity (v2.0, automated)
 **Input:** register a forecast after its horizon; resolve a quantity forecast early; edit a registered value in the file; supersede a forecast that later misses; leave a forecast unresolved past its horizon.
@@ -107,7 +107,7 @@ the run log below before shipping.
 ## T23 — Trend across a break (v2.0, automated)
 **Input:** a series rising before a registered 2009 method change and falling after it; a series with a step change.
 **Expected:** `trend_test.py --breaks` reports two segments with opposite directions and no whole-period trend; `qc_series.py` reports the Pettitt change point.
-**Automated by:** `test_breaks_split_segments`, `test_pettitt_finds_step`, `test_seasonal_kendall_recovers_trend`.
+**Automated by:** `test_breaks_split_segments`, `test_pettitt_finds_step`, `test_seasonal_kendall_recovers_trend`, `test_prewhitening_triggers_on_autocorrelated_series` (Hamed–Rao against a pymannkendall reference value).
 
 ## T24 — Package lint (v2.0, automated)
 **Input:** the package itself.
@@ -164,6 +164,7 @@ the run log below before shipping.
 | T29 | Orchestration: multi-model runner protocol; Phase 4 no-LLM alert path | no |
 
 ## Run log
+- 2026-10-21 — v2.2: demonstration runs on three open series (Nile flow at Aswan 1871–1970; Lake Huron level 1875–1972; Mauna Loa CO2 1958–2001) for the author's review article exposed two method defects, fixed here: TFPW overstated a trend in a strongly autocorrelated series (now Hamed–Rao by default, cross-checked against pymannkendall), and one-step persistence was the only baseline for multi-year forecasts (now `--persistence fixed`). 48 tests pass; strict lint passes.
 - 2026-10-21 — v2.1: multi-model runner protocol, no-LLM alert path, working rules, capped summaries; T28 automated (2 tests), T29 behavioral. Prompted by an external model's review of v2.0: its valid points (who runs the scripts in a multi-model setup; alerts must stay deterministic; summaries must stay small) are adopted; its claims that v2.0 had replaced the red team with linters or cut the roles were checked against the git diff and not confirmed (references/orchestration.md had only gained a contents list). 47 tests pass; strict lint passes.
 - 2026-10-21 — repository page for v2.0: README (EN/RU) rewritten with a process diagram, install notes and an honest status section; CITATION.cff (validated against CFF schema 1.2.0); GitHub Actions workflow running the tests and the strict lint on Python 3.9 and 3.12. Running the suite on Python 3.9 without PyYAML exposed a bug in the lint's fallback frontmatter parser (an empty value read as an unterminated quote; nested metadata ignored); fixed, with two tests forcing the fallback. 45 tests pass on 3.9 and 3.12.
 - 2026-10-21 — v2.0, improvement loop by Claude (Opus 5.5) on the author's request, rubric of 8 criteria scored 0–10 (loadability and metadata; structure and economy; domain correctness; honesty guardrails; executability; internal consistency; verification evidence; usability and install). Rounds were scored by the same model that made the changes, against mechanical checks it ran — not an independent judge.

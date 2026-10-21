@@ -4,7 +4,7 @@ description: "Designs, builds, audits, and reports digital twins of ecosystems: 
 license: CC-BY-4.0
 compatibility: "Bundled scripts need only Python 3.9+ and its standard library. scripts/evidence_search.py needs network access to PubMed, Europe PMC, OpenAlex, and Crossref. Open data (Copernicus Sentinel, Landsat, GBIF, ERA5, SoilGrids, national hydrology and meteo services) is fetched at build time with whatever access the environment has; GIS tooling (QGIS, geopandas) is optional."
 metadata:
-  version: "2.1"
+  version: "2.2"
   skill-author: Rigjita Baldanova
   last-reviewed: "2026-10-21"
 ---
@@ -203,7 +203,8 @@ naive baseline) and record them with the calibration report: a calibration
 is failed by its declared thresholds, not by feel.
 
 Score with `scripts/skill_scores.py continuous`: bias, PBIAS, MAE, RMSE,
-NSE, KGE, and skill against persistence and a training-period climatology.
+NSE, KGE, and skill against persistence (matched to the forecast horizon) and
+a training-period climatology.
 It refuses to score without a declared hold-out and fails the gate when a
 declared threshold is missed or a naive baseline is not beaten: a twin that
 cannot beat the baseline has no forecast skill, and says so.
@@ -396,7 +397,7 @@ budget.
 with a bias and breaks register; the pattern memo (trends via
 `scripts/trend_test.py` — Mann–Kendall with Sen's slope per segment between
 registered breaks, seasonal Kendall for monthly water-quality data,
-autocorrelation handled or stated); the event catalogue; the predictability
+Hamed–Rao correction for autocorrelation); the event catalogue; the predictability
 audit; and the risk register → TARP → option card loop.
 `references/uncertainty-decision.md` holds the method ladders for computed
 uncertainty, value of information, the forecast registry, and the
@@ -449,8 +450,8 @@ records, 2 every source failed). Run any of them with `--help`.
 | Script | Phase | What it enforces |
 |---|---|---|
 | `scripts/qc_series.py` | 1 | range, rate, stuck, duplicate, gap, neighbor and change-point checks; flags only |
-| `scripts/trend_test.py` | 1–2 | Mann–Kendall/Sen per segment between registered breaks; seasonal Kendall; autocorrelation |
-| `scripts/skill_scores.py` | 3–4 | declared hold-out; naive baselines; NSE/KGE/RMSE; POD/FAR/CSI; Brier with reliability |
+| `scripts/trend_test.py` | 1–2 | Mann–Kendall/Sen per segment between registered breaks; seasonal Kendall; Hamed–Rao autocorrelation correction |
+| `scripts/skill_scores.py` | 3–4 | declared hold-out; horizon-matched naive baselines; NSE/KGE/RMSE; POD/FAR/CSI; Brier |
 | `scripts/uncertainty_budget.py` | 3 | budget by source from ensembles; interval only from a joint ensemble |
 | `scripts/alert_bands.py` | 4 | anchored amber/red bands; sustained-window alerts; gaps end episodes |
 | `scripts/registry.py` | 3–4 | append-only, hash-chained forecast registry; scores forecasts exactly as issued |

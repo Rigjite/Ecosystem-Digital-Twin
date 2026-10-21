@@ -1,5 +1,21 @@
 # ecosystem-digital-twin — Changelog
 
+## v2.2 — 2026-10-21
+- trend_test.py: the default correction for serial correlation is now the
+  Hamed & Rao (1998) variance correction (detrended ranks, significant lags
+  only; matches pymannkendall 1.4.3 to four decimals). Found on real data:
+  for Lake Huron levels (lag-1 r = 0.76) trend-free pre-whitening raised
+  |Z| from 5.2 to 7.2 — the correction must not make a trend look more
+  certain; Hamed–Rao gives |Z| = 2.85. TFPW stays available with a warning.
+  `--prewhiten` remains as a hidden alias.
+- skill_scores.py: `--persistence fixed` (last training observation) for
+  forecasts issued at the end of training; `rolling` (previous observation)
+  stays the default for one-step forecasts. Comparing a multi-year
+  forecast with one-step persistence was unfair to the model.
+- analytics-forecasting.md: a Pettitt change point is a flag, not a
+  verdict — it also fires on a smooth monotonic trend.
+- Tests: 48 automated (Hamed–Rao reference value; fixed persistence).
+
 ## v2.1 — 2026-10-21
 - Multi-model runner protocol (references/orchestration.md) for councils
   that run on other developers' models through a router: one execution host

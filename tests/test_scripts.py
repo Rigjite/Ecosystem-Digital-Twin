@@ -125,6 +125,16 @@ class TestSkillScores(Tmp):
         self.assertGreater(out["metrics"]["skill_vs_climatology"], 0)
         self.assertGreater(out["metrics"]["skill_vs_persistence"], 0)
 
+    def test_fixed_persistence_baseline(self):
+        rows = [[f"{1900 + k}-07-01", 10 + k, 10 + k] for k in range(30)]  # obs rises 1/yr; sim perfect
+        write_csv(self.p("f.csv"), ["time", "obs", "sim"], rows)
+        _, roll, _ = run("skill_scores.py", "continuous", self.p("f.csv"), "--train-end", "1919-12-31", "--season", "none")
+        _, fix, _ = run("skill_scores.py", "continuous", self.p("f.csv"), "--train-end", "1919-12-31", "--season", "none",
+                        "--persistence", "fixed")
+        self.assertAlmostEqual(roll["baselines"][0]["mse_baseline"], 1.0)  # previous year is always 1 off
+        self.assertAlmostEqual(fix["baselines"][0]["mse_baseline"], sum(k * k for k in range(1, 11)) / 10)
+        self.assertIn("last training", fix["baselines"][0]["baseline"])
+
     def test_biased_model_fails_gate(self):
         self._monthly(self.p("s.csv"), 0.1, shift=6.0)
         code, out, _ = run("skill_scores.py", "continuous", self.p("s.csv"),
@@ -445,7 +455,14 @@ class TestRobustInput(Tmp):
         _, out, _ = run("trend_test.py", self.p("ar.csv"))
         seg = out["segments"][0]
         self.assertGreater(seg["lag1_autocorrelation_detrended"], 0.3)
-        self.assertIn("Yue", seg["prewhitening"])
+        self.assertIn("Hamed", seg["serial_correction"])
+        self.assertAlmostEqual(seg["Z"], 4.0455, places=3)  # reference: pymannkendall 1.4.3 hamed_rao_modification_test
+        self.assertGreater(seg["variance_factor_n_over_n_eff"], 1.5)  # positive autocorrelation inflates var(S)
+        _, raw, _ = run("trend_test.py", self.p("ar.csv"), "--autocorr", "none")
+        self.assertLess(abs(seg["Z"]), abs(raw["segments"][0]["Z"]))  # correction lowers |Z|
+        _, tf, _ = run("trend_test.py", self.p("ar.csv"), "--autocorr", "tfpw")
+        self.assertIn("Yue", tf["segments"][0]["serial_correction"])
+        self.assertTrue(any("overstate" in w for w in tf["segments"][0]["warnings"]))
 
 
 class TestOutputCaps(Tmp):

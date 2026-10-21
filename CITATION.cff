@@ -5,7 +5,7 @@ type: software
 authors:
   - family-names: Baldanova
     given-names: Rigjita
-version: "2.1"
+version: "2.2"
 date-released: "2026-10-21"
 license: CC-BY-4.0
 repository-code: "https://github.com/Rigjite/Ecosystem-Digital-Twin"
