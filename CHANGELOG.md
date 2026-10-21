@@ -14,6 +14,8 @@
   forecast with one-step persistence was unfair to the model.
 - analytics-forecasting.md: a Pettitt change point is a flag, not a
   verdict — it also fires on a smooth monotonic trend.
+- examples/open-series-demo.md and open_series_demo.py: the core run on three public series
+  (Nile flow, Lake Huron level, Mauna Loa CO2), reproducible with one command.
 - Tests: 48 automated (Hamed–Rao reference value; fixed persistence).
 
 ## v2.1 — 2026-10-21

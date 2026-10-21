@@ -147,6 +147,7 @@ threshold or fails to beat a naive baseline.
 | `references/world-practice.md` | The world practice the design builds on (Destination Earth, BioDT, EU Digital Twin of the Ocean, Delft-FEWS, Wageningen farm twins) |
 | `assets/templates.md` | The five fillable forms |
 | `examples/lake-example.md` | A worked miniature build (all values illustrative) |
+| `examples/open-series-demo.md`, `examples/open_series_demo.py` | The core run on three public series (Nile, Lake Huron, Mauna Loa CO2) — real, reproducible results |
 | `scripts/` | The calculation toolkit above |
 | `tests/test_scripts.py`, `tests/check_package.py` | Unit and end-to-end tests of the scripts; the package lint |
 | `tests/TESTS.md` | Behavioral and automated tests (T1–T29), traceability table, run log |

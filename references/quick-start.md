@@ -87,5 +87,7 @@ data, and never sits in the alert path.
   library; the world-practice survey behind the design.
 - `assets/templates.md` — the five fillable forms.
 - `examples/lake-example.md` — one small build, filled in end to end.
+- `examples/open-series-demo.md` — the scripts on three real public series,
+  with the lessons they taught.
 - `scripts/` — the calculations (`--help` on each); `tests/` — their unit
   tests and the package lint.
