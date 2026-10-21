@@ -448,6 +448,39 @@ class TestRobustInput(Tmp):
         self.assertIn("Yue", seg["prewhitening"])
 
 
+class TestOutputCaps(Tmp):
+    """Summaries stay small enough to hand to other models; totals are never lost."""
+
+    def test_qc_gaps_capped_with_full_record(self):
+        rows = [[f"2027-07-{1 + k // 4:02d}T{(k % 4) * 6:02d}:00:00", 5] for k in range(0, 120, 2)]
+        write_csv(self.p("g.csv"), ["time", "value"], rows)
+        code, out, _ = run("qc_series.py", self.p("g.csv"), "--max-gap-hours", "1", "--max-items", "5",
+                           "--full-json", self.p("full.json"))
+        self.assertEqual(code, 0)
+        self.assertEqual(len(out["gaps"]), 5)
+        self.assertTrue(out["gaps_truncated"])
+        full = json.loads(rtext(self.p("full.json")))
+        self.assertEqual(out["gaps_total"], len(full["gaps"]))
+        self.assertGreater(out["gaps_total"], 5)
+
+    def test_alerts_capped(self):
+        rows, h = [], 0
+        for episode in range(8):  # eight separate 8-hour red episodes
+            for k in range(9):
+                rows.append([f"2027-07-{1 + h // 24:02d}T{h % 24:02d}:00:00", 1.0])
+                h += 1
+            for k in range(3):
+                rows.append([f"2027-07-{1 + h // 24:02d}T{h % 24:02d}:00:00", 8.0])
+                h += 1
+        write_csv(self.p("a.csv"), ["time", "value"], rows)
+        _, out, _ = run("alert_bands.py", self.p("a.csv"), "--indicator", "DO", "--amber", "<5", "--red", "<2",
+                        "--window-hours", "6", "--anchor", "test", "--max-items", "3")
+        self.assertEqual(out["alerts_total"], 8)
+        self.assertEqual(len(out["alerts"]), 3)
+        self.assertTrue(out["alerts_truncated"])
+        self.assertEqual(out["status"], "red")
+
+
 class TestAlerts(Tmp):
     def series(self, values, flags=None, start_hour=0, step=1):
         rows = []

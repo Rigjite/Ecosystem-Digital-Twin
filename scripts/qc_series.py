@@ -26,6 +26,10 @@ Usage:
 
 Prints the summary JSON to stdout. Exit codes: 0 run completed; 2 input
 error; 3 a flag named in --fail-on occurred (use it to make a gate fatal).
+Long lists in the printed summary are capped by --max-items (default 25):
+the summary keeps the first items plus the total count and a "truncated"
+flag, so it stays small enough to hand to other models; --full-json FILE
+writes the untruncated record.
 """
 
 import argparse
@@ -118,6 +122,14 @@ def pettitt(values):
     return best_t - 1, best_k, p
 
 
+def cap(summary, key, max_items):
+    """Keep at most max_items of summary[key]; record the total and whether it was cut."""
+    items = summary.get(key) or []
+    summary[key + "_total"] = len(items)
+    summary[key + "_truncated"] = len(items) > max_items
+    summary[key] = items[:max_items]
+
+
 def read_rows(path):
     with open(path, newline="", encoding="utf-8-sig") as fh:
         reader = csv.DictReader(fh, delimiter=sniff_delimiter(path))
@@ -141,6 +153,8 @@ def main(argv=None):
     ap.add_argument("--neighbor-k", type=float, default=4.0)
     ap.add_argument("--out", help="write flagged CSV here (default: no CSV output)")
     ap.add_argument("--fail-on", default="", help="comma list of flags that make the gate fail (exit 3)")
+    ap.add_argument("--max-items", type=int, default=25, help="cap on listed gaps in the printed summary")
+    ap.add_argument("--full-json", help="write the untruncated summary here")
     args = ap.parse_args(argv)
 
     fields, rows = read_rows(args.input)
@@ -271,6 +285,10 @@ def main(argv=None):
         "gate": "fail" if failed else "pass", "failed_on": failed,
         "values_modified": False,
     }
+    if args.full_json:
+        with open(args.full_json, "w", encoding="utf-8") as fh:
+            json.dump(summary, fh, ensure_ascii=False, indent=2)
+    cap(summary, "gaps", args.max_items)
     print(json.dumps(summary, ensure_ascii=False, indent=2))
     return 3 if failed else 0
 

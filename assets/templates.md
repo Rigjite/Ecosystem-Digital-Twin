@@ -27,6 +27,9 @@ can tell a considered omission from a forgotten one.
 - Calibration plan, declared before fitting: hold-out split ____ / naive
   baselines ____ / failure thresholds ____
 - Skipped elements (Tier S) and why: ____
+- Multi-model runs: skill version pinned (tag/commit) ____ / execution host
+  ____ / router and providers receiving briefs ____ / client consent to this
+  data flow ____ / council model IDs ____ / cost cap per run ____
 
 ## 2. Risk register row (Phase 4)
 

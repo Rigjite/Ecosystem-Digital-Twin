@@ -1,7 +1,7 @@
 # Цифровой двойник экосистемы — навык для ИИ-агентов
 
 [![tests](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml/badge.svg)](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml)
-![version 2.0](https://img.shields.io/badge/version-2.0-blue)
+![version 2.1](https://img.shields.io/badge/version-2.1-blue)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
@@ -20,7 +20,7 @@
 для заказчика (хозяйство, управляющий водоёмом, природоохранный проект,
 муниципалитет) и **исследовательский инструмент** для собственной науки.
 
-Текущая версия: **2.0** (2026-10-21). Лицензия: CC BY 4.0.
+Текущая версия: **2.1** (2026-10-21). Лицензия: CC BY 4.0.
 Текст навыка и справочники — на английском языке (`SKILL.md` и папка
 `references/`); эта страница — русское описание пакета.
 
@@ -115,7 +115,10 @@ python3 scripts/skill_scores.py continuous flows.csv \
   неопределённости, ценность информации, журнал прогнозов и контрфактический
   двойник «без вмешательства», который измеряет, что реально изменила мера.
 - **Управляемая мультиагентная работа:** три уровня оркестрации, письменные
-  контракты задач и независимая красная команда.
+  контракты задач и независимая красная команда. Если совет работает на
+  моделях разных разработчиков через маршрутизатор, все скрипты запускает
+  один исполнитель, а совет получает только краткие сводки: модели спорят о
+  проверенных числах, но не вычисляют их и не участвуют в контуре тревог.
 
 ### Скрипты
 
@@ -150,14 +153,14 @@ python3 scripts/skill_scores.py continuous flows.csv \
 | `examples/lake-example.md` | Разобранная миниатюрная сборка (все значения учебные) |
 | `scripts/` | Расчётные скрипты из таблицы выше |
 | `tests/test_scripts.py`, `tests/check_package.py` | Юнит- и сквозные тесты скриптов; проверка пакета |
-| `tests/TESTS.md` | Поведенческие и автоматические тесты (T1–T27), таблица прослеживаемости, журнал прогонов |
+| `tests/TESTS.md` | Поведенческие и автоматические тесты (T1–T29), таблица прослеживаемости, журнал прогонов |
 | `CHANGELOG.md`, `CITATION.cff` | История версий; данные для цитирования |
 
 </details>
 
 ## Статус и проверка
 
-- **Автоматически:** 45 юнит- и сквозных тестов и проверка пакета запускаются
+- **Автоматически:** 47 юнит- и сквозных тестов и проверка пакета запускаются
   при каждой отправке изменений (значок tests). Локально:
   `python3 -m unittest discover -s tests` и `python3 tests/check_package.py`.
 - **История оценок:** каждый раунд, его баллы, найденные и исправленные
@@ -169,7 +172,7 @@ python3 scripts/skill_scores.py continuous flows.csv \
 
 - Пилотная сборка на реальном водоёме с открытыми данными; живой прогон
   поведенческих тестов и публикация журнала.
-- Независимая оценка версии 2.0.
+- Независимая перекрёстная оценка версии 2.1 моделями разных разработчиков.
 - Помощники для доступа к данным: выгрузки GBIF с цитируемым DOI, Sentinel-2
   через STAC.
 - Экспорт журнала прогнозов в стандарт Ecological Forecasting Initiative.
@@ -180,7 +183,7 @@ python3 scripts/skill_scores.py continuous flows.csv \
 
 Кнопка **Cite this repository** на GitHub (из [`CITATION.cff`](CITATION.cff)) или:
 
-Балданова Р. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.0).
+Балданова Р. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.1).
 https://github.com/Rigjite/Ecosystem-Digital-Twin
 
 ## Лицензия

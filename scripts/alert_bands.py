@@ -35,6 +35,14 @@ Usage:
 
 Exit 0 when evaluated (alerts or not); 3 when --fail-on red and a red alert
 exists; 2 on input error.
+
+No language model belongs in this path: the alert comes from this
+deterministic rule and goes to a named human. A model may explain an alert
+afterwards; it never triggers, delays, or suppresses one.
+Long lists in the printed summary are capped by --max-items (default 25):
+the summary keeps the first items plus the total count and a "truncated"
+flag, so it stays small enough to hand to other models; --full-json FILE
+writes the untruncated record.
 """
 
 import argparse
@@ -82,6 +90,14 @@ def ftime(text):
     except ValueError:
         return None
     return t if t.tzinfo else t.replace(tzinfo=timezone.utc)
+
+
+def cap(summary, key, max_items):
+    """Keep at most max_items of summary[key]; record the total and whether it was cut."""
+    items = summary.get(key) or []
+    summary[key + "_total"] = len(items)
+    summary[key + "_truncated"] = len(items) > max_items
+    summary[key] = items[:max_items]
 
 
 def parse_band(spec, name):
@@ -137,6 +153,8 @@ def main(argv=None):
     ap.add_argument("--ignore-flags", default="missing,range,stuck,duplicate_time",
                     help="qc flags that make a value invalid (others are kept as suspect)")
     ap.add_argument("--fail-on", choices=["none", "amber", "red"], default="none")
+    ap.add_argument("--max-items", type=int, default=25, help="cap on listed alerts in the printed summary")
+    ap.add_argument("--full-json", help="write the untruncated record here")
     a = ap.parse_args(argv)
     try:
         if not a.anchor.strip():
@@ -200,6 +218,10 @@ def main(argv=None):
            "window_hours": a.window_hours, "max_gap_hours": a.max_gap_hours, "tolerate": a.tolerate,
            "status": status, "alerts": alerts, "unsustained_breaches": spikes,
            "rule": "a breach alerts only when sustained for the window; gaps end episodes; flagged values ignored"}
+    if a.full_json:
+        with open(a.full_json, "w", encoding="utf-8") as fh:
+            json.dump(out, fh, ensure_ascii=False, indent=2)
+    cap(out, "alerts", a.max_items)
     print(json.dumps(out, ensure_ascii=False, indent=2))
     if a.fail_on == "red" and status == "red":
         return 3

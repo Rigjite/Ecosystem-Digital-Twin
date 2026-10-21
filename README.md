@@ -1,7 +1,7 @@
 # Ecosystem Digital Twin — Agent Skill
 
 [![tests](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml/badge.svg)](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml)
-![version 2.0](https://img.shields.io/badge/version-2.0-blue)
+![version 2.1](https://img.shields.io/badge/version-2.1-blue)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
@@ -19,7 +19,7 @@ touches the real system. It serves two uses, in this order: a **consulting
 product** for a client (a farm, a water-body manager, a conservation project,
 a municipality) and a **research instrument** for the operator's own science.
 
-Current version: **2.0** (2026-10-21). License: CC BY 4.0.
+Current version: **2.1** (2026-10-21). License: CC BY 4.0.
 
 ## Why this skill
 
@@ -111,6 +111,10 @@ threshold or fails to beat a naive baseline.
   that measures what an implemented measure actually changed.
 - **Governed multi-agent work:** three orchestration tiers, written task
   contracts, and an independent red team at design, calibration, and delivery.
+  When the council runs on other developers' models through a router, one
+  host runs the scripts and the council receives only capped summaries — it
+  argues over verified numbers, never computes them, and never sits in the
+  alert path.
 
 ### Scripts
 
@@ -145,14 +149,14 @@ threshold or fails to beat a naive baseline.
 | `examples/lake-example.md` | A worked miniature build (all values illustrative) |
 | `scripts/` | The calculation toolkit above |
 | `tests/test_scripts.py`, `tests/check_package.py` | Unit and end-to-end tests of the scripts; the package lint |
-| `tests/TESTS.md` | Behavioral and automated tests (T1–T27), traceability table, run log |
+| `tests/TESTS.md` | Behavioral and automated tests (T1–T29), traceability table, run log |
 | `CHANGELOG.md`, `CITATION.cff` | Version history; citation metadata |
 
 </details>
 
 ## Status and evaluation
 
-- **Automated:** 45 unit and end-to-end tests plus the package lint run on
+- **Automated:** 47 unit and end-to-end tests plus the package lint run on
   every push (see the tests badge). Run them locally with
   `python3 -m unittest discover -s tests` and `python3 tests/check_package.py`.
 - **Evaluation history:** every round, its scores, and the defects found and
@@ -164,7 +168,7 @@ threshold or fails to beat a naive baseline.
 
 - Pilot build on a real water body with open data; run the behavioral tests
   live and publish the run log.
-- Independent evaluation round of version 2.0.
+- Independent cross-vendor evaluation round of version 2.1.
 - Data-access helpers: GBIF downloads with citable DOIs, Sentinel-2 via STAC.
 - Export of the forecast registry in the Ecological Forecasting Initiative
   output and metadata standard.
@@ -175,7 +179,7 @@ Issues and suggestions are welcome.
 
 Use GitHub's **Cite this repository** button (from [`CITATION.cff`](CITATION.cff)), or:
 
-Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.0).
+Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.1).
 https://github.com/Rigjite/Ecosystem-Digital-Twin
 
 ## License

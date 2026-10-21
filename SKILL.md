@@ -4,7 +4,7 @@ description: "Designs, builds, audits, and reports digital twins of ecosystems: 
 license: CC-BY-4.0
 compatibility: "Bundled scripts need only Python 3.9+ and its standard library. scripts/evidence_search.py needs network access to PubMed, Europe PMC, OpenAlex, and Crossref. Open data (Copernicus Sentinel, Landsat, GBIF, ERA5, SoilGrids, national hydrology and meteo services) is fetched at build time with whatever access the environment has; GIS tooling (QGIS, geopandas) is optional."
 metadata:
-  version: "2.0"
+  version: "2.1"
   skill-author: Rigjita Baldanova
   last-reviewed: "2026-10-21"
 ---
@@ -69,6 +69,12 @@ entry), and keep `examples/lake-example.md` beside you: one small lake carried
 through every form. Run the bundled scripts (see **Scripts**) for every
 calculation the phases require instead of re-deriving formulas by hand: they
 enforce the rules below and leave an auditable JSON record.
+
+**Working rules.** In an interactive build, work one phase at a time and stop
+at each phase's exit criterion for the owner's approval before starting the
+next, unless the owner has asked for an unattended run. Cite literature only
+from a live search whose identifiers (DOI, PMID) are recorded — never from
+memory; with no search tool available, say so and leave the citation as a gap.
 
 ## Workflow
 
@@ -175,10 +181,9 @@ state as projected; **(3) impact simulation** — what the projected state means
 for decisions and ecosystem outcomes. A deliverable never blends numbers from
 different layers without labeling them.
 
-Build from replaceable modules — data connectors, model components, indicator
-calculators — so one can be upgraded without rebuilding the twin. Where both
-exist, prefer **hybrid models**: a process model for mechanism plus a
-statistical or ML component for the residuals, each checking the other.
+Build from replaceable modules (connectors, model components, indicator
+calculators). Where both exist, prefer **hybrid models**: a process model for
+mechanism plus a statistical or ML component for its residuals.
 
 Start simple: index models, balance models, and statistical baselines first.
 Add process complexity (hydrodynamic, biogeochemical, dispersion) only where
@@ -245,6 +250,9 @@ plus elapsed time), likely drivers, and the recommended human check.
 without an anchor, ignores values the quality gate marked invalid but keeps
 suspect ones (a real crash can look like a rate jump) and says so, and ends
 an episode at an observation gap rather than assuming the breach persisted.
+No language model sits in the alert path: alerts go from the script to a
+named human, and a model may explain an alert afterwards but never trigger,
+delay, or suppress one.
 
 **Assimilation cycle — what makes it a twin rather than a model.** Every new
 observation batch (a) updates the twin's state, and (b) is scored against what
@@ -355,12 +363,9 @@ reviewer — trust is a property of the package, not of the author.
 
 **Nesting.** Build outputs in open formats so a local twin can feed a
 regional or national system (a farm into a catchment twin, a lake into a
-basin program) without rework. Use the domain standards in
-`references/data-sources.md` — SensorThings for sensor exchange, WaterML 2.0
-for hydrology series, Darwin Core for occurrences, EML for ecological and
-forecast metadata, STAC for imagery, CF for gridded data — and record the
-choices and any deviation in the passport. A twin designed as a dead end is a
-design defect at this skill's standard.
+basin program) without rework: SensorThings, WaterML 2.0, Darwin Core, EML,
+STAC, and CF per `references/data-sources.md`, with choices and deviations
+recorded in the passport. A twin designed as a dead end is a design defect.
 
 ## Orchestration, multi-agent work, and red team
 
@@ -374,7 +379,9 @@ regulatory, health, large-money, or contested builds, red team at all gates.
 
 The orchestrator owns the passport, task contracts, and conflict resolution
 (by the evidence hierarchy, never by vote) and is the single client-facing
-voice. Phase 0 framing and the Phase 5 recommendation sign-off stay with the
+voice. When council members are models reached through an API, one host
+runs every script and the council receives only capped JSON summaries with
+manifest IDs — the multi-model runner protocol in `references/orchestration.md`. Phase 0 framing and the Phase 5 recommendation sign-off stay with the
 owner, never with agents. The **red team** attacks the build at the design,
 calibration, and delivery gates (indicator theater, threshold smuggling,
 tuning on scoring data, metric shopping, weights moved after results, claims
@@ -433,7 +440,8 @@ the state panels.
 ## Scripts
 
 All scripts use only the Python standard library, read CSV (comma, semicolon,
-or tab; decimal commas accepted) or JSON, print a JSON record, and never edit
+or tab; decimal commas accepted) or JSON, print a JSON record with long lists
+capped by `--max-items` (`--full-json` keeps everything), and never edit
 their inputs (`registry.py` only appends to its registry). Exit codes: 0 done
 or gate passed, 2 input error, 3 gate failed (`evidence_search.py`: 1 no
 records, 2 every source failed). Run any of them with `--help`.

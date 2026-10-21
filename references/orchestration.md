@@ -3,7 +3,7 @@
 ## Contents
 Scale tiers · Roles · Task contracts · Conflict resolution · Independence
 rules · Red-team gates (A design, B calibration, C delivery) · Cost and
-effort discipline · Implementation note
+effort discipline · Implementation note · Multi-model runner protocol
 
 A digital twin built by one operator follows Phases 0–6 directly. Larger or
 higher-stakes builds run through an orchestrated multi-agent layer defined
@@ -156,3 +156,57 @@ silent defaults), a distinct persona per council member, and a red-team
 pass executed by a model different from the arbiter's. The operator's own
 standing rules for which runs are worth their cost govern whether a run
 happens; this reference governs what the roles owe each other once it does.
+
+## Multi-model runner protocol
+
+How the layer runs when the council members are models reached through an
+API — for example a personal agent with its own code sandbox that calls
+other developers' models through a model router — and only one participant
+can execute code.
+
+**Compute and judgment are split.**
+
+- **One execution host.** Exactly one participant runs code: the
+  orchestrator's environment (a coding agent, a CI runner, or an agent's
+  cloud sandbox). It installs the skill at a pinned version (tag or commit,
+  recorded in the passport) and runs every script. The scripts need only the
+  Python standard library, so any sandbox with Python 3.9+ will do.
+- **Text-only council.** Council members and the red team receive briefs and
+  return text. They never compute, re-derive, or estimate a number: a
+  number a member states that is not in a script output or the manifest is
+  discarded, and the member is asked again.
+- **The brief.** One brief per question, holding: the passport slice; the
+  script's printed JSON summary (lists capped by `--max-items`, totals kept)
+  and the manifest IDs behind it; the rule or gate being tested; and the
+  answer form required — attack or finding, severity, the evidence that
+  would settle it. Raw series stay with the execution host.
+
+**What may leave the client boundary.** Agent platforms may be able to
+reach their own sandboxes, and a model router may forward a brief to
+several providers. Before any client data enters a multi-model run, the
+passport records the data flow (execution host, router, each provider and
+what it receives) and the client's written consent to it. Briefs carry
+summaries, never raw client series, never personal data; occurrence data
+are generalized with `scripts/generalize_coords.py` and pass `--check`
+before they appear in any brief.
+
+**Council composition.** Three to five members from at least two model
+developers, each named by exact model ID and the date of the run — a model
+family name is not enough to reproduce a run. The red-team model differs
+from the arbiter's (Independence rules). Distinct personas per member, as in
+Roles.
+
+**Where the council works — and where it never does.** Phase 0 design,
+Gates A–C, and the Phase 5 recommendation. It is never in the Phase 4 alert
+path: alerts come from `scripts/alert_bands.py` and go to a named human. A
+model may explain an alert afterwards; it never triggers, delays, or
+suppresses one. A call to several models takes minutes; a hypoxia window
+does not wait.
+
+**Record and cost.** Every council exchange is logged — model ID, date,
+the brief's SHA-256 hash, the response, and the orchestrator's disposition
+— and the log enters the provenance package as a dataset in the build index
+(`scripts/build_manifest.py`). Each run has a cost cap set before it starts,
+and the spend is recorded next to the log. Disagreements are settled by the
+evidence hierarchy above, never by counting votes.
+

@@ -36,6 +36,10 @@ Usage:
   python3 registry.py resolve --registry reg.jsonl --id LP-F-001 --outcome 21.4
   python3 registry.py verify --registry reg.jsonl
   python3 registry.py score --registry reg.jsonl
+
+score caps its per-forecast, overdue and pending lists with --max-items
+(default 25; totals always reported) and writes the full record with
+--full-json FILE.
 """
 
 import argparse
@@ -88,6 +92,14 @@ def append(path, record, records):
     with open(path, "a", encoding="utf-8") as fh:
         fh.write(json.dumps(record, ensure_ascii=False, sort_keys=True) + "\n")
     return record
+
+
+def cap(summary, key, max_items):
+    """Keep at most max_items of summary[key]; record the total and whether it was cut."""
+    items = summary.get(key) or []
+    summary[key + "_total"] = len(items)
+    summary[key + "_truncated"] = len(items) > max_items
+    summary[key] = items[:max_items]
 
 
 def forecasts(records):
@@ -253,6 +265,8 @@ def main(argv=None):
     s = sub.add_parser("score")
     s.add_argument("--registry", required=True)
     s.add_argument("--now", help="evaluation time (ISO); default now, UTC")
+    s.add_argument("--max-items", type=int, default=25)
+    s.add_argument("--full-json", help="write the untruncated score record here")
     a = ap.parse_args(argv)
     try:
         records = load(a.registry)
@@ -268,6 +282,11 @@ def main(argv=None):
             print(json.dumps(res, indent=2))
             return 0 if res["ok"] else 3
         res = cmd_score(a, records)
+        if a.full_json:
+            with open(a.full_json, "w", encoding="utf-8") as fh:
+                json.dump(res, fh, ensure_ascii=False, indent=2)
+        for key in ("forecasts", "overdue_without_outcome", "pending"):
+            cap(res, key, a.max_items)
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return 0 if res["chain"]["ok"] else 3
     except (ValueError, OSError, json.JSONDecodeError) as exc:

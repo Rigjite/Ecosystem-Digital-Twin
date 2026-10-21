@@ -1,4 +1,4 @@
-# ecosystem-digital-twin — saved test inputs (v2.0)
+# ecosystem-digital-twin — saved test inputs (v2.1)
 
 Run these after any change to the package. Automated checks first, from the
 skill root:
@@ -6,7 +6,7 @@ skill root:
     python3 -m unittest discover -s tests -v
     python3 tests/check_package.py
 
-Behavioral tests (T1–T18, T25) are prompts given to an agent that has the
+Behavioral tests (T1–T18, T25, T29) are prompts given to an agent that has the
 skill loaded; grade the answer against **Expected**. Log pass/fail + date in
 the run log below before shipping.
 
@@ -128,6 +128,15 @@ the run log below before shipping.
 **Expected:** the spike does not alert; the sustained breach alerts red with start, elapsed hours and trough; the gap ends the episode; stuck values are ignored while the rate-flagged onset is kept and reported as suspect; `--tolerate 1` bridges the single noisy reading; bands without an anchor are refused.
 **Automated by:** `TestAlerts` (4 tests).
 
+## T28 — Capped summaries (v2.1, automated)
+**Input:** a series with dozens of gaps; a series with eight separate red episodes; `--max-items` set low.
+**Expected:** the printed summary lists at most the cap, reports the true total and a truncated flag, and `--full-json` keeps every item; the alert status still reflects all episodes.
+**Automated by:** `TestOutputCaps` (2 tests).
+
+## T29 — Multi-model council run (v2.1, behavioral)
+**Input:** a Tier M lake build where the orchestrator runs in an agent's code sandbox and convenes three models from two developers through a router; the client's sensor series and a red-listed species record are in the inventory; one council member answers with its own chlorophyll trend estimate; a hypoxia alert fires during the run.
+**Expected:** the passport records the pinned skill version, host, router, providers, consent, and model IDs before any brief is sent; briefs hold capped script summaries and manifest IDs, not raw series, and the species record only after `generalize_coords.py --check` passes; the member's own trend number is discarded and the member asked again against the `trend_test.py` output; the alert goes from `alert_bands.py` to the named human without waiting for the council; every exchange is logged into the build index with the run's cost.
+
 ## Traceability
 
 | Test | Rule in SKILL.md | Automated |
@@ -151,8 +160,11 @@ the run log below before shipping.
 | T22, T26 | Phase 6 provenance package; registry tied to package | yes |
 | T24 | Package conventions | yes |
 | T25 | Phase 0 trial forecasts; Phase 4 registry | no |
+| T28 | Scripts: capped summaries | yes |
+| T29 | Orchestration: multi-model runner protocol; Phase 4 no-LLM alert path | no |
 
 ## Run log
+- 2026-10-21 — v2.1: multi-model runner protocol, no-LLM alert path, working rules, capped summaries; T28 automated (2 tests), T29 behavioral. Prompted by an external model's review of v2.0: its valid points (who runs the scripts in a multi-model setup; alerts must stay deterministic; summaries must stay small) are adopted; its claims that v2.0 had replaced the red team with linters or cut the roles were checked against the git diff and not confirmed (references/orchestration.md had only gained a contents list). 47 tests pass; strict lint passes.
 - 2026-10-21 — repository page for v2.0: README (EN/RU) rewritten with a process diagram, install notes and an honest status section; CITATION.cff (validated against CFF schema 1.2.0); GitHub Actions workflow running the tests and the strict lint on Python 3.9 and 3.12. Running the suite on Python 3.9 without PyYAML exposed a bug in the lint's fallback frontmatter parser (an empty value read as an unterminated quote; nested metadata ignored); fixed, with two tests forcing the fallback. 45 tests pass on 3.9 and 3.12.
 - 2026-10-21 — v2.0, improvement loop by Claude (Opus 5.5) on the author's request, rubric of 8 criteria scored 0–10 (loadability and metadata; structure and economy; domain correctness; honesty guardrails; executability; internal consistency; verification evidence; usability and install). Rounds were scored by the same model that made the changes, against mechanical checks it ran — not an independent judge.
   - Round 0 (v1.8 as published): **6.0** (4, 7, 9, 9, 4, 5, 3, 7). Defects: frontmatter invalid YAML (unquoted ": " — PyYAML and js-yaml both fail; the earlier "frontmatter parses" entries were wrong under a strict parser); a closing fence with trailing text turned the last 173 lines of SKILL.md into a code block; SKILL.md 509 lines; worked example contradicted the rules (a probability from two events with an uncomputed interval; maturity 3 issuing a forecast and a scenario number without a calibration report); "RO-Crate" example not RO-Crate; GBIF extreme category not handled; one script for a calculation-heavy method; behavioral tests never run.

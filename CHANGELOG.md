@@ -1,5 +1,26 @@
 # ecosystem-digital-twin — Changelog
 
+## v2.1 — 2026-10-21
+- Multi-model runner protocol (references/orchestration.md) for councils
+  that run on other developers' models through a router: one execution host
+  runs every script at a pinned skill version; council members are
+  text-only and never compute numbers; briefs carry capped JSON summaries
+  with manifest IDs, never raw client data or precise sensitive
+  coordinates; the data flow and the client's consent are recorded before
+  any client data enters a run; councils of three to five models from at
+  least two developers, named by exact model ID and run date; every
+  exchange logged into the provenance package, with a cost cap per run.
+- No language model in the alert path: Phase 4 alerts come from
+  alert_bands.py and go to a named human.
+- Working rules: interactive builds proceed one phase at a time with a stop
+  for the owner's approval; literature is cited only from a live search
+  with recorded identifiers.
+- qc_series.py, alert_bands.py and registry.py score cap long lists in the
+  printed summary (--max-items, totals kept) and write the full record with
+  --full-json.
+- Passport template gains the multi-model run line (pinned version, host,
+  providers, consent, model IDs, cost cap). Tests: 47 automated; T28–T29.
+
 ## v2.0 — 2026-10-21
 - Loadability fixes: the SKILL.md frontmatter was invalid YAML (an
   unquoted ": " in the description); values are now quoted and the file

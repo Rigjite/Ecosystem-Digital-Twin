@@ -67,7 +67,10 @@ forecast is shown; the sensitive-species location rule; gaps stated as gaps.
 Move to Tier M when the build spans several domains, makes predictive
 claims, or feeds a client decision with money or health at stake. Move to
 Tier L for regulatory, contested, or public-health builds
-(references/orchestration.md).
+(references/orchestration.md). When the council runs on other developers'
+models through a router, follow the multi-model runner protocol there: one
+host runs the scripts, the council gets capped summaries, never raw client
+data, and never sits in the alert path.
 
 ## File map
 
