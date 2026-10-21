@@ -1,5 +1,48 @@
 # ecosystem-digital-twin — Changelog
 
+## v2.0 — 2026-10-21
+- Loadability fixes: the SKILL.md frontmatter was invalid YAML (an
+  unquoted ": " in the description); values are now quoted and the file
+  parses with PyYAML and js-yaml. A closing code fence in Phase 6 carried
+  text on the same line, so everything after it rendered as code; fixed.
+  SKILL.md is under 500 lines; the analytics and uncertainty summaries are
+  now short pointers to their references.
+- Description rewritten for triggering: water-quality, bloom, hypoxia and
+  low-flow early warning, monitoring design, audits of vendor twins, and
+  Russian-language requests.
+- Calculation toolkit (Python standard library, unit-tested):
+  qc_series.py (quality gate with Pettitt change point, flags only),
+  trend_test.py (Mann–Kendall/Sen per segment between registered breaks,
+  seasonal Kendall, trend-free pre-whitening), skill_scores.py (declared
+  hold-out, persistence and climatology baselines, NSE/KGE/RMSE,
+  POD/FAR/CSI, Brier with reliability and Murphy decomposition),
+  registry.py (append-only hash-chained forecast registry, no back-dating,
+  superseded forecasts stay scored, overdue forecasts listed),
+  generalize_coords.py (GBIF sensitivity categories per Chapman 2020 with
+  this skill's 0.1° floor, extreme records withheld, pre-sharing check),
+  build_manifest.py (valid RO-Crate 1.1 package; headline numbers traced and
+  cited in the report; forecast registry tied to the package),
+  uncertainty_budget.py (budget by source from one-at-a-time and joint
+  ensembles; interval only from a joint ensemble), alert_bands.py (anchored
+  amber/red bands, sustained-breach windows, gaps end episodes, invalid
+  values ignored, suspect values kept and marked, optional noise tolerance). All CSV readers accept
+  comma, semicolon or tab delimiters and decimal commas, and report rows
+  they could not use. evidence_search.py: explicit 429 handling,
+  consistent first-author field, contact-email warning.
+- Rules sharpened: trial forecasts defined for level-3 twins (how level 4 is
+  earned, no decision weight); scenario numbers from published effect sizes
+  labeled evidence-based; intervals must name their computing method; the
+  Phase 6 manifest example is now actual RO-Crate structure; GBIF extreme
+  category handled (withhold) — previously 0.1° for all.
+- Worked example made consistent with the rules: calibration plan declared
+  before fitting and reported against baselines; no bloom probability from
+  two events; the chlorophyll forecast registered as a trial; the wetland
+  effect labeled evidence-based with the lake response stated as a gap.
+- Tests: tests/test_scripts.py (43 unit and end-to-end tests, network-free), tests/check_package.py
+  (package lint), T19–T27 and a traceability table in TESTS.md. Contents
+  lists added to the four references over 100 lines. READMEs gain install
+  instructions (folder name must match the skill name).
+
 ## v1.8 — 2026-10-20
 - Usability pack: three documents
   that make the package usable without reading all ~2,000 lines first.

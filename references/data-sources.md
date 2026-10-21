@@ -41,7 +41,7 @@ Verify current access terms and coverage at build time; services change.
 
 | Source | Gives | Notes |
 |---|---|---|
-| GBIF | Species occurrence records, global | Apply sensitive-data generalization; filter to research-grade, dated, georeferenced records |
+| GBIF | Species occurrence records, global | Filter to research-grade, dated, georeferenced records; generalize sensitive records before sharing (`scripts/generalize_coords.py`) |
 | iNaturalist (research grade export via GBIF) | Occurrence with photos | Observer bias toward roads and settlements — state it |
 | eBird / national monitoring schemes | Bird abundance and trends | Protocol-based; strong for trend indicators |
 | National red lists and protected-area registries | Conservation status, legal boundaries | The authority for status; GBIF is not. Mostly human-maintained country registries and PDFs, not machine-readable APIs — budget manual extraction time |

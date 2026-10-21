@@ -25,9 +25,10 @@ No single platform covers an ecosystem twin. Route by question:
 
 The bundled helper `scripts/evidence_search.py` queries PubMed, Europe PMC,
 OpenAlex, and Crossref and emits normalized JSON that the **literature-review**
-skill's `scripts/search_databases.py` can deduplicate and format. Other
-platforms are searched through their interfaces with the same provenance
-record.
+skill's search_databases.py helper (part of that skill, when installed) can
+deduplicate and format. A throttled or failed platform is reported, skipped,
+and recorded as a search limitation. Other platforms are searched through
+their interfaces with the same provenance record.
 
 ## When the evidence layer runs
 

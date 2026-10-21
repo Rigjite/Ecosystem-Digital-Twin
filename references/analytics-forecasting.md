@@ -1,5 +1,14 @@
 # Analytics, forecasting, risk, and preventive action
 
+## Contents
+1. Historical data: rescue before conclusions
+2. Pattern analysis (`scripts/trend_test.py`)
+3. The event catalogue
+4. Forecasting events (`scripts/skill_scores.py events | brier`)
+5. Risk analytics
+6. Preventive measures — trigger–action–response plans
+7. Decision options for improving the existing ecosystem
+
 This layer turns the twin from a description of the present into a tested
 instrument for what happens next. Its discipline is strict: a pattern is a
 hypothesis until it survives out-of-sample testing; a forecast is a
@@ -41,12 +50,16 @@ Run on the harmonized history, before model fitting (Phase 2–3 inputs):
 
 - **Climatology and seasonality** — the object's normal year: means,
   percentiles, timing. Every anomaly claim is relative to this baseline.
-- **Trends** — direction and rate with autocorrelation-aware significance
-  (e.g. Mann–Kendall / Sen slope as a starting point); a trend across a
-  registered method break is reported as two segments, not one line.
+- **Trends** — direction and rate with autocorrelation-aware significance:
+  `scripts/trend_test.py` runs Mann–Kendall with Sen's slope per segment
+  between registered breaks (trend-free pre-whitening when lag-1
+  autocorrelation is significant and sampling is regular), or the seasonal
+  Kendall test for monthly water-quality data. A trend across a registered
+  method break is reported as separate segments, never as one line.
 - **Anomalies and extremes** — exceedance counts, return periods for high
   and low extremes (flood, drought, heat), and how they are changing.
-- **Change points and regime shifts** — step changes in mean or variance;
+- **Change points and regime shifts** — step changes in mean or variance
+  (`scripts/qc_series.py` reports a Pettitt change point for every series);
   candidate drivers recorded next to each break (land use, regulation,
   climate, method change) with the evidence for each.
 - **Lead–lag structure** — cross-correlations between drivers and state
@@ -108,8 +121,10 @@ events is removed, whatever its continuous-metric scores say.
 **Event-based validation is mandatory.** In addition to Phase 3 continuous
 metrics, every event forecast reports from hindcasts: probability of
 detection, false-alarm ratio, critical success index, lead-time
-distribution, and — for probabilistic forecasts — Brier score and a
-reliability statement. A forecast without hindcast event scores is a
+distribution (`scripts/skill_scores.py events`), and — for probabilistic
+forecasts — Brier score, Brier skill score against a climatological
+probability from the training period, and a reliability table
+(`scripts/skill_scores.py brier`). A forecast without hindcast event scores is a
 prototype output and is labeled as such wherever it appears.
 
 ## 5. Risk analytics

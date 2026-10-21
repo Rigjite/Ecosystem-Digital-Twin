@@ -1,8 +1,9 @@
 # Quick start — the one-page path
 
 For a first or small build (Tier S). Work the steps in order; each names the
-form to fill (`assets/templates.md`) and the reference that holds the detail.
-A filled miniature of the whole path is in `examples/lake-example.md`.
+form to fill (`assets/templates.md`), the script to run, and the reference
+that holds the detail. A filled miniature of the whole path is in
+`examples/lake-example.md`.
 
 ## The ten steps
 
@@ -11,38 +12,44 @@ A filled miniature of the whole path is in `examples/lake-example.md`.
    *(Form: Object passport.)*
 2. **Fill the passport.** Object, boundaries, owner, time horizon, update
    cadence, target maturity level, orchestration tier, stakeholders, ELSA /
-   FPIC checklist, data ownership. *(Phase 0.)*
+   FPIC checklist, data ownership, scenario weights fixed now. *(Phase 0.)*
 3. **Inventory the data, open first.** Source matrix: satellite, gauges,
    species records, meteo, soils — then client and field data. Add the
-   evidence inventory (prior studies) and rescue the history (archives,
-   yearbooks, old surveys) before calling anything unmeasured.
+   evidence inventory (`scripts/evidence_search.py`) and rescue the history
+   (archives, yearbooks, old surveys) before calling anything unmeasured.
    *(references/data-sources.md, evidence-sources.md,
    analytics-forecasting.md §1.)*
-4. **Pass the quality gate.** Validate every series; quarantine failures;
-   name a fall-back source for every core variable. *(Phase 1.)*
+4. **Pass the quality gate.** Run `scripts/qc_series.py` on every series;
+   quarantine failures; log every significant change point in the bias and
+   breaks register; name a fall-back source for every core variable.
+   *(Phase 1.)*
 5. **Select indicators.** Start from the domain quick set; add core
    indicators for every medium present; add conditional panels only where
    a pressure or decision triggers them. Unmeasured selections stay listed
    as gaps. *(references/indicators.md §18.)*
-6. **Build the simplest model that the data can feed.** Drivers → state →
+6. **Build the simplest model the data can feed.** Drivers → state →
    impacts; monitoring / forecast / impact layers labeled; index or balance
-   model before process complexity. *(Phase 2.)*
-7. **Calibrate or label.** Hindcast against held-out history; report the
-   metrics against a naive baseline. No usable history → the build is a
-   **prototype**, in writing. *(Phase 3.)*
+   model before process complexity. Trends for the pattern memo come from
+   `scripts/trend_test.py`, one segment per registered break. *(Phase 2.)*
+7. **Calibrate or label.** Declare the hold-out split and failure thresholds
+   first, then run `scripts/skill_scores.py continuous` (and `events` /
+   `brier` for event products). The model must beat persistence and
+   climatology. No usable history → the build is a **prototype**, in
+   writing. *(Phase 3.)*
 8. **Set the bands, the risks, the preventive plans.** Green/amber/red per
-   core indicator with named anchors; risk register for the material
-   risks; a trigger–action–response plan for each risk that has an
-   actionable lead time. *(Phase 4; forms: Risk register, TARP.)*
+   core indicator with named anchors, evaluated with
+   `scripts/alert_bands.py`; risk register for the material risks; a trigger–action–response plan for each risk that has an
+   actionable lead time. Register any forecast with `scripts/registry.py
+   issue` before its outcome is knowable — at level 3, as a trial forecast.
+   *(Phase 4; forms: Risk register, TARP, Forecast registry entry.)*
 9. **Run one improvement round.** Nature-based options first; score with
-   weights fixed in advance; present the recommendation as an option card
-   with residual risk and a verification indicator. *(Phase 5; form:
-   Option card.)*
-10. **Deliver the package, not a report.** Passport, state with provenance
-    IDs, calibration report, bands and verification scores, scenario
-    comparison, gaps, maintenance duties — in the RO-Crate manifest
-    format. Pass the red-team delivery gate (Gate C) before it ships.
-    *(Phase 6; references/orchestration.md.)*
+   the weights fixed in step 2; present the recommendation as an option card
+   with residual risk and a verification indicator. *(Phase 5; form: Option
+   card.)*
+10. **Deliver the package, not a report.** Generalize shared species records
+    (`scripts/generalize_coords.py`, then `--check`), build the RO-Crate with
+    `scripts/build_manifest.py --report report.md --registry reg.jsonl`, and
+    pass the red-team delivery gate (Gate C). *(Phase 6; references/orchestration.md.)*
 
 ## What Tier S may skip — and what it may never skip
 
@@ -51,8 +58,9 @@ compound stress tests, the counterfactual twin (until a measure is
 actually implemented). Record each skip in the passport.
 
 May **never** skip: provenance for every number; the prototype label when
-uncalibrated; a named anchor for every threshold; the sensitive-species
-location rule; gaps stated as gaps.
+uncalibrated; the declared hold-out and naive-baseline comparison for any
+forecast; a named anchor for every threshold; registration before any
+forecast is shown; the sensitive-species location rule; gaps stated as gaps.
 
 ## When to escalate
 
@@ -63,7 +71,7 @@ Tier L for regulatory, contested, or public-health builds
 
 ## File map
 
-- `SKILL.md` — the rules and the phases.
+- `SKILL.md` — the rules, the phases, the script table.
 - `references/indicators.md` — what to measure.
 - `references/data-sources.md` — where measurements and data come from.
 - `references/evidence-sources.md` — where published proof comes from.
@@ -76,5 +84,5 @@ Tier L for regulatory, contested, or public-health builds
   library; the world-practice survey behind the design.
 - `assets/templates.md` — the five fillable forms.
 - `examples/lake-example.md` — one small build, filled in end to end.
-- `scripts/evidence_search.py` — literature retrieval across PubMed,
-  Europe PMC, OpenAlex, Crossref.
+- `scripts/` — the calculations (`--help` on each); `tests/` — their unit
+  tests and the package lint.

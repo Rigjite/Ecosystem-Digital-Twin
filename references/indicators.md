@@ -1,5 +1,14 @@
 # Indicators and threshold anchors
 
+## Contents
+1 Climate and weather drivers · 2 Air quality and deposition · 3 Hydrology
+and hydrometry · 4 Surface-water physical and chemical quality · 5 Nutrients
+and eutrophication · 6 Contaminants · 7 Sediments · 8 Groundwater · 9 Soil and
+land · 10 Landscape and disturbance · 11 Flora · 12 Microalgae and
+phytoplankton · 13 Microbiology · 14 Invertebrates · 15 Fish and wildlife ·
+16 Ecosystem functions · 17 Pressures and management response · **18 Domain
+quick sets (start here)** · 19 Indicator metadata and quality requirements
+
 This is a catalogue, not a universal checklist. A twin selects indicators by
 the object's media, pressures, decisions, and available evidence. Including an
 indicator means the twin can state its source, method, unit, frequency,

@@ -1,5 +1,11 @@
 # Uncertainty, information value, forecast registry, and the counterfactual twin
 
+## Contents
+1. Quantitative uncertainty
+2. Value of information and adaptive sampling
+3. Forecast registry and pre-registration (`scripts/registry.py`)
+4. The counterfactual twin — proving improvement
+
 Four methods that turn the twin's honesty from wording into arithmetic and
 institutions. They are used at decision and predictive maturity levels;
 simpler builds state why they are not yet applied.
@@ -31,7 +37,11 @@ itself). A single blended "±" that hides which source dominates is a defect.
 
 **Uncertainty budget.** Each headline output ships with a small budget
 table: source → contribution to total variance (or a ranked qualitative
-share where computation is not yet possible, labeled as such). The budget
+share where computation is not yet possible, labeled as such).
+`scripts/uncertainty_budget.py` builds it from ensemble runs — one
+one-at-a-time ensemble per source plus a joint ensemble — reports each
+source's share, the reducible share, the interaction term (large → move to
+Sobol indices), and a percentile interval from the joint ensemble only. The budget
 tells the client what would have to improve for the answer to sharpen —
 and what cannot improve because the uncertainty is in the future itself.
 
@@ -71,18 +81,25 @@ Predictive claims are earned in public, in advance.
 
 - **Every forecast is registered before its outcome is knowable:** forecast
   ID; issue timestamp; quantity or event; horizon; value or probability
-  with its interval; model and version; input data by manifest ID; the
-  verification metric declared for it. The registry is **append-only** —
-  entries are never edited after issue; corrections are new entries that
-  reference the old.
+  with its interval and the method that computed it; model and version;
+  input data by manifest ID; the verification metric declared for it. The
+  registry is **append-only** — entries are never edited after issue;
+  corrections are new entries that reference the old, and the old entry
+  stays in the score. `scripts/registry.py` implements this: it stamps the
+  registration clock (no back-dating), refuses a forecast whose outcome is
+  already knowable, refuses an interval without its method, chains every
+  record to the previous one by SHA-256 so `verify` exposes any later edit,
+  and lists overdue forecasts that were never resolved. The chain proves
+  nothing was changed afterwards; anchor its latest hash outside the build
+  (a commit, an email to the owner) to prove when it was written.
 - **Verification is computed against the registry**, exactly as issued —
   never reconstructed from memory or from a later model version. This is
   what makes the standing verification scores in Phase 4 evidence rather
   than narrative.
 - **Metadata follows the ecological-forecasting community convention**
-  (Ecological Forecasting Initiative practice): forecast, model, and
-  uncertainty described in a standard, machine-readable form so scores are
-  comparable across builds and across time.
+  (Dietze et al. 2023, Ecosphere 14: e4686 — the EFI output and metadata
+  standard): forecast, model, and uncertainty described in a standard,
+  machine-readable form so scores are comparable across builds and over time.
 - A forecast found to have been issued but not registered is treated as
   not issued: it earns no verification credit and supports no claim.
 

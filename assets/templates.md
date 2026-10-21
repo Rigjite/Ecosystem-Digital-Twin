@@ -11,7 +11,8 @@ can tell a considered omission from a forgotten one.
 - Owner (client or research owner) and contact role: ____
 - Decision the twin must support: ____ (none → monitoring-only, stated)
 - Time horizon / update cadence the decision needs: ____
-- Target maturity level (1 prototype – 5 decision): ____
+- Target maturity level (1 prototype – 5 decision): ____ / level earned
+  today, with the evidence: ____
 - Orchestration tier (S / M / L) and reason: ____
 - Stakeholders: who decides ____ / who is affected ____ / who owns each
   data stream ____
@@ -22,7 +23,9 @@ can tell a considered omission from a forgotten one.
   ____ / conflicts of interest ____
 - Data ownership and reuse terms (client data stays the client's): ____
 - Interoperability standards adopted (per data type) and deviations: ____
-- Scenario scoring criteria and weights — fixed before results: ____
+- Scenario scoring criteria and weights — fixed before results (date): ____
+- Calibration plan, declared before fitting: hold-out split ____ / naive
+  baselines ____ / failure thresholds ____
 - Skipped elements (Tier S) and why: ____
 
 ## 2. Risk register row (Phase 4)
@@ -70,13 +73,20 @@ can tell a considered omission from a forgotten one.
 
 ## 5. Forecast registry entry (Phases 3–4)
 
+Register with `scripts/registry.py issue`; this form is the human-readable
+copy, not the record of truth.
+
 - Forecast ID: ____
-- Issued at (timestamp, before the outcome is knowable): ____
-- Quantity or event forecast: ____
-- Horizon: ____
-- Value or probability, with interval: ____
+- Issued at (registration clock, before the outcome is knowable): ____
+- Quantity or event forecast (what, where, unit): ____
+- Horizon end: ____
+- Value or probability: ____ / interval ____ / how the interval was
+  computed ____ (no method → no interval)
+- Trial forecast (level-3 twin, no decision weight)? ____
+- Calibrated component it comes from, with its hold-out scores: ____
 - Model and version: ____
 - Input data (manifest IDs): ____
 - Verification metric declared in advance: ____
-- Outcome (filled after the horizon closes): ____
+- Supersedes (ID, if a correction): ____
+- Outcome (recorded after the horizon closes): ____
 - Verification score (computed against this entry, exactly as issued): ____

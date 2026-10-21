@@ -1,12 +1,12 @@
 ---
 name: ecosystem-digital-twin
-description: Designs and operates digital twins of ecosystems — agricultural land, ponds, lakes, river reaches, air basins, and flora/fauna conservation sites. Full cycle: object scoping, open-first data inventory, state model, calibration against observations, monitoring with alert thresholds, historical pattern analysis, event forecasting and risk analytics, preventive action planning, and scenario modeling aimed at ecosystem improvement. Use when planning, building, auditing, or reporting an ecosystem digital twin, for a client project or for research.
-license: CC BY 4.0
-compatibility: Starts from open data (Copernicus Sentinel, Landsat, GBIF, ERA5, SoilGrids, national hydrology and meteo services) and open literature platforms (PubMed, Europe PMC, OpenAlex, Crossref) for the evidence layer, and adds client-supplied sensor and field data when available. GIS / remote-sensing tooling (QGIS, geopandas) is used at execution time, not assumed.
+description: "Designs, builds, audits, and reports digital twins of ecosystems: farmland, ponds and lakes, river reaches, air basins, and flora/fauna conservation sites. Full cycle, with scripts for the calculations: object scoping, open-first data inventory, data quality gate, state model, calibration against observations and naive baselines, monitoring with alert bands, trend and event analytics, pre-registered forecasts, preventive action plans, and scenario modeling for ecosystem improvement. Use when the user wants an ecosystem or environmental digital twin; a water-quality, algal-bloom, hypoxia, or low-flow early-warning system; a monitoring and forecasting design for a lake, river, farm, air basin, or protected area; or an audit of such a twin or of a vendor's claims about one. Also for requests in Russian (цифровой двойник экосистемы, водоёма или поля; мониторинг и прогноз качества воды)."
+license: CC-BY-4.0
+compatibility: "Bundled scripts need only Python 3.9+ and its standard library. scripts/evidence_search.py needs network access to PubMed, Europe PMC, OpenAlex, and Crossref. Open data (Copernicus Sentinel, Landsat, GBIF, ERA5, SoilGrids, national hydrology and meteo services) is fetched at build time with whatever access the environment has; GIS tooling (QGIS, geopandas) is optional."
 metadata:
-  version: "1.8"
+  version: "2.0"
   skill-author: Rigjita Baldanova
-  last-reviewed: "2026-10-20"
+  last-reviewed: "2026-10-21"
 ---
 
 # Ecosystem Digital Twin
@@ -38,34 +38,37 @@ flora and fauna conservation sites.
   production metric alone.
 - **Conservation safeguard.** Precise locations of rare or endangered species
   are never published and never leave the client's boundary (poaching and
-  disturbance risk). Follow GBIF sensitive-data practice: generalize coordinates
-  (to a 0.1-degree grid, roughly 10 km, or coarser) in every shared output.
-  Sensitivity is determined by IUCN and national red lists and CITES appendices.
+  disturbance risk). Sensitivity follows IUCN and national red lists and CITES
+  appendices. Generalize by GBIF sensitivity category (Chapman 2020): extreme —
+  withhold coordinates (or 1° at most); high — 0.1° (~11 km). This skill's
+  floor for any listed species is 0.1°, even where GBIF allows 0.01° or
+  0.001°. Blank locality and verbatim fields that can re-identify the site.
+  `scripts/generalize_coords.py` applies the rule; its `--check` mode must
+  pass on every file that leaves the client boundary.
 - **Open first.** Exhaust open data before asking the client for anything.
   Client and sensor data extend the twin; they are not its entry ticket.
 - **No uncalibrated twin ships as a twin.** A build that has not been checked
   against observations is labeled a prototype, in writing, in the deliverable.
 - **The client's data stays the client's.** Farm, sensor, and site data are
   governed by the client's terms (the farm-data-space principle, as in the EU
-  Code of Conduct on agricultural data sharing); the twin's
-  passport states ownership, access, and what may be reused. Nothing is
-  published or folded into another project without written consent.
+  Code of Conduct on agricultural data sharing); the passport states ownership,
+  access, and what may be reused. Nothing is published or folded into another
+  project without written consent.
 
-World practice this skill is built on — Destination Earth, BioDT, the EU
-Digital Twin of the Ocean, the Delft-FEWS operational forecasting practice,
-and Wageningen farm twins — is surveyed
-in `references/world-practice.md`, including what was adapted and what was
-improved for this skill's scale.
+World practice this skill builds on — Destination Earth, BioDT, the EU
+Digital Twin of the Ocean, Delft-FEWS, and Wageningen farm twins — is
+surveyed in `references/world-practice.md`, with what was adapted and why.
 
-## Start here — the usability pack
+## Start here
 
 New to a build? Do not read the whole package first. Follow
-`references/quick-start.md` — the one-page, ten-step path for a first or
-small (Tier S) build. Fill the five forms in `assets/templates.md` as you
-go (object passport, risk register, trigger–action–response plan, option
-card, forecast registry entry), and keep `examples/lake-example.md` open
-beside you: one small lake carried through every form, end to end. The
-phases and references below are the detail the quick start points into.
+`references/quick-start.md` — the ten-step path for a first or small (Tier S)
+build. Fill the five forms in `assets/templates.md` as you go (object passport,
+risk register, trigger–action–response plan, option card, forecast registry
+entry), and keep `examples/lake-example.md` beside you: one small lake carried
+through every form. Run the bundled scripts (see **Scripts**) for every
+calculation the phases require instead of re-deriving formulas by hand: they
+enforce the rules below and leave an auditable JSON record.
 
 ## Workflow
 
@@ -86,25 +89,27 @@ to the client by its level, never above it:
 5. **Decision** — scenario results demonstrably used in the owner's actual
    decisions, with outcomes reviewed.
 
-Levels 2–3 describe and monitor observed state; they make no predictive
-claims. Any forecast or scenario output requires Phase 3 calibration,
-whatever the declared level.
+The level states what the whole twin has earned. Levels 2–3 make no
+predictive claims the owner may act on. A level-3 twin may register **trial
+forecasts** from a component that passed Phase 3 — that is how level 4 is
+earned — labeled "trial" wherever they appear, with no decision weight until
+their verification record exists. Every forecast or scenario number comes
+from a component that passed Phase 3; a scenario effect taken from published
+effect sizes instead is labeled evidence-based, with its transferability check.
 
 Record also the stakeholder map (who decides, who is affected, who owns each
-data stream) and a short ethical-legal-societal check: data ownership and
-consent, sensor placement permissions, who may be harmed by a wrong alert,
-any community whose land or livelihood the twin describes — including the
-free, prior and informed consent of Indigenous communities where
-required by applicable law and international standards (and as good practice
-wherever their territories or knowledge are involved), plus landowner consent
-under local law. FPIC is a checklist step, not a phrase: identify the
-rights-holders, document the consent obtained or the legal basis relied on,
-and record the outcome in the passport before data collection starts —
-personal data
-that imagery or sensor feeds may capture (minimize it; applicable privacy
-law governs), and any conflict of interest — including a client who prefers
-a particular scenario outcome. Scoring criteria and weights are fixed before
-scenario results are seen, and the fixing is recorded.
+data stream) and an ethical-legal-societal (ELSA) check: data ownership and
+consent; sensor placement permissions; who may be harmed by a wrong alert;
+landowner consent under local law; and the free, prior and informed consent
+(FPIC) of Indigenous communities where law and international standards
+require it — and as good practice wherever their territories or knowledge
+are involved. FPIC is a checklist step, not a phrase: identify the
+rights-holders, document the consent or the legal basis relied on, and
+record the outcome before data collection starts. Record personal data that
+imagery or sensors may capture (minimize it; privacy law governs) and any
+conflict of interest, including a client who prefers a particular scenario
+outcome. Scoring criteria and weights are fixed, and the fixing recorded,
+before scenario results are seen.
 
 Decision point: if no decision can be named, the build is monitoring-only.
 Say so in the passport — a monitoring build is a legitimate product, but it is
@@ -126,50 +131,43 @@ justifies choices; it never substitutes for observations of the object.
 Crossref and returns normalized records for screening.
 
 **Historical data rescue.** Before any variable is declared unmeasured,
-search for its history per `references/analytics-forecasting.md`: agency
-and institute archives, printed yearbooks and station logs, remote-sensing
-archives back to 1984, museum and herbarium records, proxy records
-(sediment cores, tree rings), and documented local knowledge collected
-with consent. Harmonize what is found — method changes, moved stations,
-revised taxonomy — and log every break in a bias and breaks register. If
-no history exists, the passport says so; pattern and forecast claims for
-that variable are then limited accordingly.
+search for its history (archives, yearbooks, remote-sensing archives back to
+1984, museum records, proxies, consented local knowledge —
+`references/analytics-forecasting.md` §1), harmonize it, and log every break
+in a bias and breaks register. No history → the passport says so, and
+pattern and forecast claims for that variable are limited accordingly.
 
 **Data quality gate (before any modeling).** Every incoming series passes
-validation: range checks, rate-of-change checks, spatial consistency checks,
-and trend-break detection. Series that fail are quarantined and flagged, never
-silently cleaned. Gaps are handled by a declared protocol (interpolation,
-model estimate, or left open) — and the protocol's choice is visible in every
-downstream output it touches.
+`scripts/qc_series.py`: range, rate-of-change, stuck-sensor, duplicate-time,
+and gap checks, a neighbor-station consistency check where a second station
+exists, and a Pettitt change-point test. Failures are flagged and
+quarantined, never silently cleaned — the script never edits values. A
+significant change point is explained in the bias and breaks register
+before any trend is computed across it. Gaps are handled by a declared
+protocol (interpolation, model estimate, or left open), and the protocol's
+choice is visible in every downstream output it touches.
 
 **Fall-back hierarchy.** For every core variable name a primary source and at
 least one fall-back (an alternative dataset, a neighboring station, a modeled
 estimate labeled as such). Continuity of monitoring must not depend on a
 single feed.
 
-Exit criterion: the candidate state-variable list for this object is drafted,
-and every variable on it has at least one source in the matrix or is
-explicitly listed as unmeasured. Phase 2 finalizes the list against this
-matrix. Respect source licenses from the start: Sentinel data is acknowledged to
-Copernicus, other products carry their own license terms — verify the
-specific obligations per product — and GBIF downloads are cited by their DOI
-in the provenance log.
+Exit criterion: the candidate state-variable list is drafted, and every
+variable on it has at least one source in the matrix or is explicitly listed
+as unmeasured. Respect source licenses from the start: Sentinel data is
+acknowledged to Copernicus, other products carry their own terms (verify per
+product), and GBIF downloads are cited by their DOI in the provenance log.
 
 ### Phase 2 — State model
 
 Choose state variables and indicators per domain from
 `references/indicators.md`. Start from the domain quick set there, include the
 core indicators for every medium present, then add conditional panels only
-where a pressure, exposure pathway, legal duty, or decision triggers them —
-extended water chemistry and nutrient forms, contaminants, sediments,
-groundwater, hydrometry, phytoplankton composition, sanitary and process
-microbiology, flora, fauna, ecosystem functions, and pressure–response
-indicators. The catalogue is tiered, not a promise to measure everything:
-conditional panels not selected are justified in the passport by the absence
-of their trigger, and selected indicators that cannot yet be measured stay on
-the list as named data gaps. Structure the model as drivers → state → impacts:
-what acts on the system, what state it produces, what that state does to
-ecosystem outcomes.
+where a pressure, exposure pathway, legal duty, or decision triggers them.
+The catalogue is tiered, not a promise to measure everything: conditional
+panels not selected are justified in the passport by the absence of their
+trigger, and selected indicators that cannot yet be measured stay on the list
+as named data gaps. Structure the model as drivers → state → impacts.
 
 Keep the twin's three layers separate, as the operational ocean and Earth
 twins do: **(1) monitoring** — the state as observed; **(2) forecast** — the
@@ -177,43 +175,48 @@ state as projected; **(3) impact simulation** — what the projected state means
 for decisions and ecosystem outcomes. A deliverable never blends numbers from
 different layers without labeling them.
 
-Build the twin from replaceable modules — data connectors, model components,
-indicator calculators — so one module can be upgraded or swapped (a better
-classifier, a new sensor feed, a revised model) without rebuilding the twin.
-Where both exist, prefer **hybrid models**: a process model for mechanism plus
-a statistical or ML component for the residuals and the patterns the process
-model misses, each checking the other.
-
-Exit criterion: every state variable has a named layer (monitoring,
-forecast, or impact), a model component, and an uncertainty statement.
+Build from replaceable modules — data connectors, model components, indicator
+calculators — so one can be upgraded without rebuilding the twin. Where both
+exist, prefer **hybrid models**: a process model for mechanism plus a
+statistical or ML component for the residuals, each checking the other.
 
 Start simple: index models, balance models, and statistical baselines first.
 Add process complexity (hydrodynamic, biogeochemical, dispersion) only where
 the data inventory can feed and check it. A complex model on thin data is a
 defect, not an achievement.
 
+Exit criterion: every state variable has a named layer (monitoring,
+forecast, or impact), a model component, and an uncertainty statement.
+
 ### Phase 3 — Calibration and validation
 
-Hindcast the model against historical observations the model did not train on.
-For statistical and index models, enforce the separation explicitly: a held-
-out period or cross-validation folds, declared before fitting — never tune on
-the data used to score. Report fit with named metrics per indicator (e.g.
-RMSE and bias for continuous variables; Nash–Sutcliffe or KGE for flows) and
-always against a naive baseline (persistence or seasonal mean): a twin that
-cannot beat the baseline has no forecast skill, and says so. Failure
-thresholds are declared before fitting (e.g. NSE below 0.5 for flows, or any
-score at or below the naive baseline) and recorded with the calibration
-report — a calibration is failed by its declared thresholds, not by feel.
-Where no historical observations exist for hindcasting, calibration is
-impossible by definition: the build remains a prototype (Phase 0 ladder),
-verification is qualitative only — expert review of plausibility and internal
-consistency — and the deliverable states this in place of any skill score. Report also the
-periods and conditions where the model fails, and what would improve it. A failed calibration narrows the twin's
-claims — record the narrowing in the deliverable rather than tuning silently.
+Hindcast the model against observations it did not train on. Declare the
+split before fitting — a held-out period or cross-validation folds — and
+never tune on the data used to score. Declare failure thresholds before
+fitting too (e.g. NSE below 0.5 for monthly flows, or any score at or below a
+naive baseline) and record them with the calibration report: a calibration
+is failed by its declared thresholds, not by feel.
+
+Score with `scripts/skill_scores.py continuous`: bias, PBIAS, MAE, RMSE,
+NSE, KGE, and skill against persistence and a training-period climatology.
+It refuses to score without a declared hold-out and fails the gate when a
+declared threshold is missed or a naive baseline is not beaten: a twin that
+cannot beat the baseline has no forecast skill, and says so.
+
+Where no historical observations exist, calibration is impossible by
+definition: the build remains a prototype, verification is qualitative only
+(expert review of plausibility and internal consistency), and the
+deliverable says so in place of any skill score. Report the periods and
+conditions where the model fails, and what would improve it. A failed
+calibration narrows the twin's claims — record the narrowing rather than
+tuning silently.
+
 Event forecasts are validated as events, not only as continuous series:
-from hindcasts report probability of detection, false-alarm ratio,
-critical success index, lead-time distribution, and — for probabilistic
-forecasts — Brier score with a reliability statement
+`scripts/skill_scores.py events` (probability of detection, false-alarm
+ratio, critical success index, frequency bias, lead-time distribution) and
+`brier` (Brier score, skill against climatology, reliability table). With
+fewer than about five observed events, the scores are descriptive counts,
+not a track record — the script says so, and the product is a watch
 (`references/analytics-forecasting.md`). A forecast without hindcast event
 scores is a prototype output and is labeled as such wherever it appears.
 
@@ -223,8 +226,10 @@ ensemble propagation as the default, Bayesian calibration where the data
 support it, and a global sensitivity analysis naming the inputs that drive
 each headline result. Every headline output ships with an uncertainty
 budget separating measurement, forcing, parameter, structural, and
-scenario contributions. A number whose uncertainty cannot yet be computed
-is published with the reason — never with a decorative interval.
+scenario contributions — `scripts/uncertainty_budget.py` computes it from
+one-at-a-time and joint ensembles, and reports an interval only from a
+joint ensemble. A number whose uncertainty cannot yet be computed is
+published with the reason — never with a decorative interval.
 
 ### Phase 4 — Monitoring, assimilation, and verification
 
@@ -233,276 +238,250 @@ a standard, or the object's own baseline statistics — the anchor is named in
 the passport. An alert requires a breach sustained over a defined window, not a
 single spike. Set the window per indicator dynamics — hours to a day for
 dissolved oxygen and air-pollution episodes; days to weeks for chlorophyll
-and vegetation anomalies — and record the window with the band. Alert
-output states: indicator, observed value, band breached,
-duration (window start timestamp plus elapsed time), likely drivers, and
-the recommended human check.
+and vegetation anomalies — and record it with the band. Alert output states:
+indicator, observed value, band breached, duration (window start timestamp
+plus elapsed time), likely drivers, and the recommended human check.
+`scripts/alert_bands.py` evaluates a series this way: it refuses bands
+without an anchor, ignores values the quality gate marked invalid but keeps
+suspect ones (a real crash can look like a rate jump) and says so, and ends
+an episode at an observation gap rather than assuming the breach persisted.
 
 **Assimilation cycle — what makes it a twin rather than a model.** Every new
 observation batch (a) updates the twin's state, and (b) is scored against what
-the twin forecast for that moment. The twin is thereby kept continuously
-constrained by reality, in the manner of numerical weather prediction, at
-whatever cadence the data allows. Method follows data density: error
-correction or nudging for sparse series; Ensemble Kalman or particle
+the twin forecast for that moment, in the manner of numerical weather
+prediction, at whatever cadence the data allows. Method follows data density:
+error correction or nudging for sparse series; Ensemble Kalman or particle
 filtering where sensor density and model structure support them. Working
-heuristic: nudging and error correction suit series whose gaps exceed the
-system's response time; ensemble methods require observations at least as
-frequent as the fastest dynamic being corrected, plus an ensemble the
-operator can actually run — if either fails, downgrade the method, never
-the honesty. The chosen method is named in the passport.
+heuristic: nudging suits series whose gaps exceed the system's response time;
+ensemble methods need observations at least as frequent as the fastest
+dynamic being corrected, plus an ensemble the operator can actually run — if
+either fails, downgrade the method, never the honesty. Name the method in the
+passport.
 
-**Standing verification.** Forecasts are pre-registered in the twin's
-append-only forecast registry before their outcomes are knowable —
-forecast ID, issue time, horizon, value or probability with interval,
-model version, input manifest IDs, and the verification metric declared
-(`references/uncertainty-decision.md`). Verification is computed against
-the registry exactly as issued, never reconstructed later. Registered
-forecasts are archived, never overwritten, and re-scored on schedule with
-more than one metric. The current verification
-score per indicator is part of every client report: a falling score triggers
-recalibration or an honest narrowing of the twin's claims — and, at review
-points, an assessment of decision value: did the twin's guidance change a real
-decision, and did the outcome improve? A twin can be accurate and useless;
-only the second check catches that.
+**Standing verification.** Forecasts are registered before their outcomes are
+knowable with `scripts/registry.py issue` — an append-only, hash-chained
+registry holding forecast ID, issue time (the clock at registration, never
+back-dated), horizon, value or probability with its interval and the method
+that computed it, model version, input manifest IDs, and the declared
+metric. `registry.py score` scores forecasts exactly as issued — superseded
+ones included, overdue ones listed — and `verify` proves no record was
+edited; anchor the latest hash outside the build (a commit or an email to the
+owner) to prove when it was written. A forecast that was never registered
+earns no verification credit. The current verification score per indicator is
+part of every client report: a falling score triggers recalibration or an
+honest narrowing of claims — and, at review points, an assessment of decision
+value: did the twin's guidance change a real decision, and did the outcome
+improve? A twin can be accurate and useless; only the second check catches
+that.
 
-**Risk register and preventive action.** Maintain the object's risk
-register (hazard, pathway, exposed element, likelihood, impact,
-vulnerability, detectability, confidence, owner) and review it at every
-verification cycle, with an emerging-risk scan at least annually. Every
-material risk with an actionable lead time carries a pre-agreed
-trigger–action–response plan: the trigger from the alert bands, the
-preventive measure, its owner, the lead time it needs, its side effects,
-and its stand-down criteria — agreed before the season, not improvised
-during the event (`references/analytics-forecasting.md`).
+**Risk register and preventive action.** Keep the object's risk register,
+review it every verification cycle, and scan for emerging risks at least
+annually. Every material risk with an actionable lead time carries a
+trigger–action–response plan (TARP) agreed before the season — trigger from
+the alert bands, measure, owner, needed lead time, side effects, stand-down
+criteria (`references/analytics-forecasting.md` §5–6).
 
-**Value of information.** Each verification cycle also reviews where the
-next measurement would most reduce decision uncertainty per unit cost —
-from the sensitivity rankings and uncertainty budgets — and adapts the
-sampling plan accordingly: sensor placement, extra dates, or intensified
-sampling inside a forecast window (`references/uncertainty-decision.md`).
-When the expected value of further measurement falls below its cost, the
-plan says so and stops growing the network.
+**Value of information.** Each verification cycle ranks the next
+measurements by expected reduction in decision uncertainty per unit cost
+(from the sensitivity rankings and budgets) and adapts sampling; when further
+measurement costs more than it teaches, the plan says so and stops growing
+the network (`references/uncertainty-decision.md` §2).
 
 ### Phase 5 — Scenario modeling for improvement
 
 Build scenarios from `references/scenarios.md`: load reductions, buffer and
 restoration measures, land-use changes, emission cuts, water-regime changes.
-Run each against the baseline twin. Score every scenario on: ecosystem outcomes
-(per domain indicators), cost, implementation risk, and time to effect — a
-multi-criteria scoring with weights agreed with the client and recorded
-before the runs (see Phase 0), never weights chosen after results are known.
-Recommend one, with its trade-offs stated. Never optimize silently for yield,
-discharge convenience, or any single metric. Draw the option portfolio from
-the risk register and the pattern memo — prevent → mitigate → restore →
-adapt → monitor — with no-regret and low-regret options surfaced first, and
-present each option as an option card: expected effect with its evidence,
-time to effect, cost, reversibility, residual risk, and the monitoring
-indicator and review date that will prove or disprove the effect
-(`references/analytics-forecasting.md`). When a measure is implemented,
-freeze the no-action baseline twin as the counterfactual and run both
-twins on the same observed forcings thereafter: the reported effect of the
-measure is the difference, with its uncertainty, and any later model
-improvement re-runs both twins with the change disclosed — never the
-baseline alone (`references/uncertainty-decision.md`).
+Run each against the calibrated baseline twin. Score every scenario on
+ecosystem outcomes (domain indicators), cost, implementation risk, and time
+to effect — weights agreed with the client and recorded before the runs,
+never chosen after results are known. Recommend one, with its trade-offs.
+Never optimize silently for yield, discharge convenience, or any single
+metric.
+
+Draw the option portfolio from the risk register and the pattern memo —
+prevent → mitigate → restore → adapt → monitor — with no-regret and
+low-regret options first, and present each as an option card: expected
+effect with its evidence, time to effect, cost, reversibility, residual
+risk, and the monitoring indicator and review date that will prove or
+disprove the effect. When a measure is implemented, freeze the no-action
+baseline twin as the counterfactual and run both twins on the same observed
+forcings: the reported effect is the difference, with its uncertainty, and
+any later model improvement re-runs both twins with the change disclosed
+(`references/uncertainty-decision.md`).
 
 **Nature-based solutions are evaluated first.** In every scenario round, the
 nature-based options (restoration, buffers, corridors, rewetting, green
-infrastructure), where they exist for the problem at hand, are modeled before
-engineered ones. If no nature-based variant is modeled in a round, the reason
-(no applicable NBS, no data to model it, client-excluded with the exclusion
-recorded) is written into the object passport — skipping NBS silently is a
-defect, skipping it on the record is a decision. If the recommendation
-favors an engineered option over an available nature-based one, the
-deliverable must state why — the burden of justification sits on the
-engineered option, not on nature.
+infrastructure), where they exist for the problem, are modeled before
+engineered ones. If none is modeled, the reason (no applicable NBS, no data
+to model it, client-excluded with the exclusion recorded) is written into
+the passport — skipping NBS silently is a defect, skipping it on the record
+is a decision. If the recommendation favors an engineered option over an
+available nature-based one, the deliverable states why: the burden of
+justification sits on the engineered option.
 
 ### Phase 6 — Deliverable and handover
 
-Client deliverable contains: object passport (with maturity level); current
-state with evidence and provenance per indicator; calibration report;
-monitoring bands, alert rules, and current verification scores; scenario
-comparison and the recommendation; uncertainty and data gaps; update cadence
-and the owner's maintenance duties. Research use adds the full provenance log
-and model configuration to the project archive.
+The client deliverable contains: object passport (with maturity level);
+current state with evidence and provenance per indicator; calibration
+report; monitoring bands, alert rules, and current verification scores;
+scenario comparison and the recommendation; uncertainty and data gaps;
+update cadence and the owner's maintenance duties. Research use adds the
+full provenance log and model configuration to the project archive.
 
-**Provenance package.** The deliverable ships as a structured package, not a
-loose report: a manifest lists every dataset (with version and retrieval
-date), every model component and its version, the workflow that produced each
-result, and the parameter set. Minimum format: an RO-Crate (JSON-LD) manifest
-at the package root — dataset, model, workflow, and parameter entities with
-persistent identifiers where they exist — so the package stays readable by
-external systems and reviewers without this skill's tooling. Compact shape:
+**Provenance package.** The deliverable ships as an RO-Crate 1.1 package, not
+a loose report: `ro-crate-metadata.json` at the root with the metadata
+descriptor, the root dataset (name, description, datePublished, license), a
+data entity per dataset (retrieval date as `sdDatePublished` for web data),
+a SoftwareApplication per model component with its version, and a
+CreateAction per workflow step linking inputs, model, and results. Each
+headline number is a PropertyValue result of the action that produced it, so
+its evidence chain is machine-traceable. Write the build index in the shape
+below and let `scripts/build_manifest.py` validate it and emit the crate:
 
 ```json
-{ "datasets": [{"id": "ds-01", "name": "...", "version": "...", "retrieved": "YYYY-MM-DD"}],
-  "models":   [{"id": "m-01", "component": "...", "version": "..."}],
-  "workflow": [{"step": "...", "tool": "...", "parameters": "..."}],
-  "outputs":  [{"value": "...", "evidence": ["ds-01", "m-01"]}] }
-``` Every headline number in the report carries the
-manifest ID of its evidence. Any result can then be re-traced and re-run by
-the client or by a reviewer — trust is a property of the package, not of the
-author's reputation.
+{ "name": "...", "description": "...", "license": "https://...",
+  "datasets": [{"id": "ds-01", "name": "...", "url": "https://...", "version": "...", "retrieved": "YYYY-MM-DD"}],
+  "models":   [{"id": "m-01", "name": "...", "version": "..."}],
+  "steps":    [{"id": "st-01", "name": "...", "instrument": "m-01", "inputs": ["ds-01"], "parameters": "..."}],
+  "outputs":  [{"id": "out-01", "name": "...", "value": 0.0, "unit": "...", "produced_by": "st-01"}] }
+```
+
+Every headline number in the report carries its output ID in brackets, e.g.
+`[out-01]`; `build_manifest.py --report report.md --registry reg.jsonl`
+fails the build when a headline output is not cited, a cited ID does not
+exist, an output has no evidence chain, the forecast registry does not
+verify, or a registered forecast cites an input outside the package. Any result can then be re-traced and re-run by the client or a
+reviewer — trust is a property of the package, not of the author.
 
 **Nesting.** Build outputs in open formats so a local twin can feed a
 regional or national system (a farm into a catchment twin, a lake into a
-basin program) without rework. Use the domain standards recorded in
-`references/data-sources.md` — SensorThings for sensor exchange, WaterML
-2.0 for hydrology series, Darwin Core for occurrences, EML for ecological
-and forecast metadata, STAC for imagery, CF for gridded data — and record
-the choices and any deviation in the passport. A twin designed as a dead
-end is a design defect at this skill's standard.
+basin program) without rework. Use the domain standards in
+`references/data-sources.md` — SensorThings for sensor exchange, WaterML 2.0
+for hydrology series, Darwin Core for occurrences, EML for ecological and
+forecast metadata, STAC for imagery, CF for gridded data — and record the
+choices and any deviation in the passport. A twin designed as a dead end is a
+design defect at this skill's standard.
 
 ## Orchestration, multi-agent work, and red team
 
-Builds run at one of three orchestration tiers, chosen in Phase 0 and
-recorded in the passport (full protocol: `references/orchestration.md`):
-
-- **Tier S — single operator** (default): one operator runs all phases;
-  one independent red-team pass before delivery.
-- **Tier M — orchestrated specialists**: an orchestrator coordinates a data
-  scout, an evidence scout, and a domain modeler in parallel workstreams,
-  with a calibration auditor independent of the modeler; red team at the
-  calibration and delivery gates.
-- **Tier L — full council**: Tier M plus a heterogeneous council — a
-  distinct seniority-framed expert persona per member, never one shared
-  persona — for design and scenario decisions on regulatory, health,
-  large-money, or contested builds; red team at all three gates.
+Builds run at one of three tiers, chosen in Phase 0 and recorded in the
+passport (full protocol: `references/orchestration.md`): **Tier S** — one
+operator, one independent red-team pass before delivery (default); **Tier M**
+— an orchestrator with data scout, evidence scout, domain modeler, and a
+calibration auditor independent of the modeler, red team at calibration and
+delivery; **Tier L** — Tier M plus a council of distinct expert personas for
+regulatory, health, large-money, or contested builds, red team at all gates.
 
 The orchestrator owns the passport, task contracts, and conflict resolution
 (by the evidence hierarchy, never by vote) and is the single client-facing
-voice. The two human decisions — Phase 0 framing and the Phase 5
-recommendation sign-off — are never delegated to agents.
+voice. Phase 0 framing and the Phase 5 recommendation sign-off stay with the
+owner, never with agents. The **red team** attacks the build at the design,
+calibration, and delivery gates (indicator theater, threshold smuggling,
+tuning on scoring data, metric shopping, weights moved after results, claims
+above the maturity level), independent of the builders it attacks. Every
+attack is recorded with severity and disposition; an unresolved critical
+attack blocks delivery, and the red-team pass is the last element cut from a
+budget.
 
-The **red team** attacks the build at defined gates — design (indicator
-theater, threshold smuggling, proxy overclaims), calibration (tuning on
-scoring data, metric shopping, assimilation theater), and delivery
-(scenario cherry-picking, weights moved after results, claims above the
-maturity level). It is independent of the builders it attacks; where models
-differ per role, its model differs from the arbiter's. Every attack is
-recorded with severity and disposition (fixed / claim narrowed / risk
-accepted with owner sign-off); an unresolved critical attack blocks
-delivery. Multi-agent overhead is justified by stakes and predictive
-claims, never by the availability of tooling — and the red-team pass is
-the last element cut from a budget, never the first.
+## Analytics, uncertainty, and the counterfactual
 
-## Analytics, forecasting, and preventive action
-
-The analytics layer (`references/analytics-forecasting.md`) runs across
-Phases 1–5. It rescues and harmonizes historical data before conclusions
-are drawn; mines it for patterns — seasonality, trends, extremes, change
-points, lead–lag structure, phenology shifts — recorded in a pattern memo
-with confidence per pattern; and builds the object's **event catalogue**
-(past adverse events with their antecedent conditions, impacts, and the
-responses taken), which is the bridge from description to anticipation.
-Event forecasts pass a predictability audit (an observable forcing and a
-lead time longer than the preventive action needs — otherwise the product
-is a watch and a response plan, honestly labeled), climb a method ladder
-from climatology to hybrid models only as hindcast event scores justify,
-and are always probabilistic with verified track records. Risks live in a
-maintained register, preventive measures in pre-agreed
-trigger–action–response plans, and improvement options in reviewed option
-cards — so the loop closes: analysis → forecast → prevention → action →
-measured outcome → better analysis. Where no historical data exist, none
-of this is simulated: the build states the absence and narrows its claims.
-
-## Uncertainty, information value, and the counterfactual
-
-Four methods (`references/uncertainty-decision.md`) convert the twin's
-honesty into arithmetic. **Quantitative uncertainty** is computed for every
-headline output — ensembles or Bayesian calibration, global sensitivity
-analysis, and an uncertainty budget that separates measurement, forcing,
-parameter, structural, and scenario contributions. **Value of information**
-spends the monitoring budget where it most reduces decision uncertainty,
-adapts sampling to forecast windows, and stops expanding the network when
-further measurement costs more than it teaches. The **forecast registry**
-pre-registers every forecast in append-only form before its outcome is
-knowable, so verification scores are evidence, not narrative. And the
-**counterfactual twin** — the frozen no-action baseline, run in parallel
-on the same forcings — turns implemented measures into measured effects
-and avoided-damage reports: what was promised, what the model attributes,
-and what was observed, kept as three distinct numbers.
+`references/analytics-forecasting.md` runs across Phases 1–5: history rescue
+with a bias and breaks register; the pattern memo (trends via
+`scripts/trend_test.py` — Mann–Kendall with Sen's slope per segment between
+registered breaks, seasonal Kendall for monthly water-quality data,
+autocorrelation handled or stated); the event catalogue; the predictability
+audit; and the risk register → TARP → option card loop.
+`references/uncertainty-decision.md` holds the method ladders for computed
+uncertainty, value of information, the forecast registry, and the
+counterfactual twin. Where no historical data exist, none of this is
+simulated: the build states the absence and narrows its claims.
 
 ## Domain modules
 
-**Agriculture.** State: soil moisture, soil organic carbon, nutrient balance
-(N/P/K), soil biology where decisions depend on it, NDVI/EVI dynamics, erosion
-risk, receiving-water nutrient and sediment state, pollinators where crops or
-field margins matter, yield as one indicator among several.
-Typical scenarios: fertilizer regime, cover crops, rotation change, irrigation
-scheduling, buffer strips along watercourses. Watch-out: yield-only twins
-degrade the soil they model — the improvement score always includes soil and
-water outcomes.
+State variables per domain start from the quick sets in
+`references/indicators.md` §18; scenario families are in
+`references/scenarios.md`. What each domain adds:
 
-**Pond / lake.** State: water level and residence time, dissolved oxygen,
-temperature and stratification profile, pH and conductivity, chlorophyll-a,
-Secchi depth, nutrient forms and N/P loading, phytoplankton composition and
-cyanobacteria risk, macrophyte, zooplankton, benthos and fish community
-indicators, sanitary microbiology where people or animals use the water. Typical scenarios: inflow load reduction, aeration, biomanipulation,
-shoreline restoration, drawdown regime. Watch-out: internal phosphorus loading
-can dominate external cuts for years — scenarios must model the lag.
+**Agriculture.** Typical scenarios: fertilizer regime, cover crops, rotation
+change, irrigation scheduling, buffer strips along watercourses. Watch-out:
+yield-only twins degrade the soil they model — the improvement score always
+includes soil and receiving-water outcomes; yield is one indicator among
+several.
 
-**River reach.** State: the full hydrometric panel (stage with rating-curve
-status, discharge, low- and high-flow indices, flood and inundation regime),
-water temperature, dissolved oxygen, nutrient forms and loads, sediment
-transport and substrate condition, macroinvertebrate and diatom/phytobenthos
-indices, continuity for fish passage. Typical scenarios: effluent limits, riparian restoration, flow regime
-change, barrier removal. Watch-out: a reach twin without its upstream boundary
-conditions is a fragment — Phase 1 must cover the contributing catchment.
+**Pond / lake.** Typical scenarios: inflow load reduction, aeration,
+biomanipulation, shoreline restoration, drawdown regime. Watch-out: internal
+phosphorus loading can dominate external cuts for years — scenarios must
+model the lag, or state that they cannot.
 
-**Air basin.** State: PM2.5/PM10, NO2/NOx, SO2, O3, NH3 where agriculture or
-sensitive habitats are in scope, deposition onto soil and water against
-critical loads and levels, emission inventory by sector, meteorological
-dispersion conditions. Typical scenarios: emission source cuts,
-traffic or heating changes, green barrier planting. Watch-out: attribute state
-to sources cautiously — dispersion makes naive source claims the most common
-error in air twins.
+**River reach.** Typical scenarios: effluent limits, riparian restoration,
+flow regime change, barrier removal. Watch-out: a reach twin without its
+upstream boundary conditions is a fragment — Phase 1 must cover the
+contributing catchment, and stage data carry their rating-curve status.
 
-**Flora / fauna conservation.** State: habitat extent and connectivity, flora
-composition and red-list plant populations, species richness and indicator
-species, fauna occupancy, abundance and population trends by taxon present
-(birds, mammals, amphibians, fish, invertebrates and pollinators as the site
-supports), disease and eDNA screening where triggered, pressure indicators
-(fragmentation, invasive species, disturbance) and management-response
-indicators (actions delivered, recovery trajectory).
-Typical scenarios: corridor creation, protected-area boundary options,
-invasive control, grazing or visitor pressure changes. Watch-out: the
-conservation safeguard above is absolute — sensitive locations are generalized
-in every output, including the client's public reporting.
+**Air basin.** Typical scenarios: emission source cuts, traffic or heating
+changes, green barrier planting. Watch-out: attribute state to sources
+cautiously — dispersion makes naive source claims the most common error in
+air twins; deposition is judged against critical loads and levels.
+
+**Flora / fauna conservation.** Typical scenarios: corridor creation,
+protected-area boundary options, invasive control, grazing or visitor
+pressure changes. Watch-out: the conservation safeguard is absolute —
+sensitive locations are generalized in every output, including the client's
+public reporting; pressure and management-response indicators sit beside
+the state panels.
+
+## Scripts
+
+All scripts use only the Python standard library, read CSV (comma, semicolon,
+or tab; decimal commas accepted) or JSON, print a JSON record, and never edit
+their inputs (`registry.py` only appends to its registry). Exit codes: 0 done
+or gate passed, 2 input error, 3 gate failed (`evidence_search.py`: 1 no
+records, 2 every source failed). Run any of them with `--help`.
+
+| Script | Phase | What it enforces |
+|---|---|---|
+| `scripts/qc_series.py` | 1 | range, rate, stuck, duplicate, gap, neighbor and change-point checks; flags only |
+| `scripts/trend_test.py` | 1–2 | Mann–Kendall/Sen per segment between registered breaks; seasonal Kendall; autocorrelation |
+| `scripts/skill_scores.py` | 3–4 | declared hold-out; naive baselines; NSE/KGE/RMSE; POD/FAR/CSI; Brier with reliability |
+| `scripts/uncertainty_budget.py` | 3 | budget by source from ensembles; interval only from a joint ensemble |
+| `scripts/alert_bands.py` | 4 | anchored amber/red bands; sustained-window alerts; gaps end episodes |
+| `scripts/registry.py` | 3–4 | append-only, hash-chained forecast registry; scores forecasts exactly as issued |
+| `scripts/generalize_coords.py` | all | GBIF sensitivity categories with this skill's 0.1° floor; `--check` gate before sharing |
+| `scripts/build_manifest.py` | 6 | RO-Crate 1.1 provenance package; every headline number traced and cited |
+| `scripts/evidence_search.py` | 1–5 | literature retrieval across PubMed, Europe PMC, OpenAlex, Crossref |
+
+After changing the package, run `python3 -m unittest discover -s tests` and
+`python3 tests/check_package.py` from the skill root.
 
 ## Quality gates before delivery
 
-- Provenance complete: every number in the deliverable traces to a source and
-  carries its manifest ID in the provenance package.
-- Maturity level declared in the passport and never overstated to the client.
-- Calibration reported, including where the model fails; verification scores
-  current for every forecast indicator.
+- Provenance complete: `build_manifest.py --report` passes — every headline
+  number carries its manifest ID and evidence chain.
+- Maturity level declared in the passport and never overstated; trial
+  forecasts labeled as trial.
+- Calibration reported with its declared split and thresholds, including where
+  the model fails; `skill_scores.py` gate results attached; verification
+  scores current for every forecast indicator.
 - Every threshold has a named anchor (regulation, standard, or baseline).
+- Every issued forecast is in the registry and `registry.py verify` passes;
+  every implemented measure has a frozen counterfactual baseline.
+- Event forecasts carry hindcast event scores; material risks have pre-agreed
+  preventive actions with named triggers, owners, and stand-down criteria.
+- Headline outputs carry computed uncertainty with a budget
+  (`uncertainty_budget.py`), or the stated reason it cannot yet be computed.
+- Sensitive species locations generalized: `generalize_coords.py --check`
+  passes on every shared occurrence file; no exceptions.
 - Red-team gates for the build's tier passed, or every critical attack is
-  dispositioned on the record (references/orchestration.md).
-- Event forecasts carry hindcast event scores (detection, false alarms,
-  lead time); material risks have pre-agreed preventive actions with named
-  triggers, owners, and stand-down criteria.
-- Headline outputs carry computed uncertainty with a budget, or the stated
-  reason it cannot yet be computed; every issued forecast is in the
-  registry; every implemented measure has a frozen counterfactual
-  baseline.
-- Sensitive species locations generalized; no exceptions.
+  dispositioned on the record (`references/orchestration.md`).
 - Uncertainty and data gaps stated in the deliverable itself, not in an annex
   nobody reads.
 - Scenario recommendation scored on ecosystem outcomes, not one metric;
-  nature-based options were evaluated first, or their absence is explained.
+  nature-based options evaluated first, or their absence explained.
 
 ## Integration
 
-- **literature-review** — builds the evidence base for indicator choice,
-  thresholds, and scenario expectations. Platform routing, the query
-  protocol, and the evidence hierarchy for this skill live in
-  `references/evidence-sources.md`; cross-platform retrieval runs through
-  `scripts/evidence_search.py`, whose normalized output feeds the
-  literature-review deduplication and formatting helper.
-- **peer-review** — the audit stance for reviewing a third-party twin or a
-  vendor's claims about one.
-- **scientific-writing** — the client deliverable and research reporting.
-- Component execution skills (geopandas and similar GIS, remote-sensing, and
-  domain libraries from open skill collections) may be adopted separately when
-  a live project needs them; this skill does not depend on them.
+Optional companion skills, when installed: **literature-review** for evidence
+synthesis (`scripts/evidence_search.py` output fits its deduplication
+helper), **peer-review** for auditing a third-party twin or a vendor's
+claims, **scientific-writing** for the deliverable. GIS and remote-sensing
+libraries (geopandas and similar) are adopted per project when needed.

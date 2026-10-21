@@ -1,6 +1,14 @@
-# ecosystem-digital-twin — saved test inputs (v1.8)
+# ecosystem-digital-twin — saved test inputs (v2.0)
 
-Run these after any change to SKILL.md. Log pass/fail + date below before shipping.
+Run these after any change to the package. Automated checks first, from the
+skill root:
+
+    python3 -m unittest discover -s tests -v
+    python3 tests/check_package.py
+
+Behavioral tests (T1–T18, T25) are prompts given to an agent that has the
+skill loaded; grade the answer against **Expected**. Log pass/fail + date in
+the run log below before shipping.
 
 ## T1 — No decision named
 **Input:** a client asks for "a digital twin of our lake" without naming any decision it should support.
@@ -12,7 +20,7 @@ Run these after any change to SKILL.md. Log pass/fail + date below before shippi
 
 ## T3 — Sensitive species location
 **Input:** GBIF data for the site includes a precise record of a red-listed species, and the client wants a public map.
-**Expected:** coordinates are generalized in the public output per GBIF sensitive-data practice; precise location stays inside the client boundary only.
+**Expected:** coordinates are generalized in the public output per GBIF sensitive-data practice — 0.1° at least, withheld for extreme sensitivity — with locality text blanked, using `scripts/generalize_coords.py` and its `--check` gate; precise location stays inside the client boundary only.
 
 ## T4 — Uncalibrated build
 **Input:** a twin is assembled from open data only, with no observations available for hindcasting.
@@ -41,6 +49,7 @@ Run these after any change to SKILL.md. Log pass/fail + date below before shippi
 ## T10 — Evidence helper smoke test (v1.4)
 **Input:** `python3 scripts/evidence_search.py "cyanobacteria recreational water quality" --limit 3`
 **Expected:** normalized JSON records from the reachable platforms, each with title, source, year and DOI/PMID where the platform provides them; output is accepted by the literature-review `search_databases.py --deduplicate`; a platform that throttles (HTTP 429) is reported and skipped, not retried aggressively.
+**Offline part (v2.0, automated):** `TestEvidenceSearchOffline` checks normalization against canned Europe PMC, OpenAlex and Crossref responses.
 **Run 2026-10-20:** PASS with one platform limitation — PubMed 3, Europe PMC 3, Crossref 3 records (PMIDs/DOIs present); dedupe pipeline accepted the file (9 records in, 9 out). OpenAlex answered 429 twice from this network's keyless pool; the script stopped that source and reported it, exit code stayed 0 while other sources delivered. Re-test OpenAlex when a free API key is configured.
 
 ## T11 — Orchestration contract and independence (v1.5)
@@ -75,7 +84,81 @@ Run these after any change to SKILL.md. Log pass/fail + date below before shippi
 **Input:** a new operator (person or model) who has not read the package is given a small pond build and only the quick start, the templates, and the worked example.
 **Expected:** they produce a complete Tier S skeleton — passport, indicator selection with gaps stated, one risk register row, one TARP, one option card, and a registry entry — without inventing values, and they can name which reference holds the detail for each step. Reading the full SKILL.md is required only where the quick start points into it.
 
+## T19 — Hold-out discipline (v2.0, automated)
+**Input:** `skill_scores.py continuous` without a declared split; then a model whose hold-out errors exceed a naive baseline's.
+**Expected:** the first run is refused (exit 2) until `--train-end` is declared or `--no-holdout` labels the result as in-sample fit; the second fails the gate (exit 3) even if a declared threshold passes. Baselines use training data only.
+**Automated by:** `test_holdout_required`, `test_biased_model_fails_gate`, `test_good_model_passes_and_beats_baselines`.
+
+## T20 — Registry integrity (v2.0, automated)
+**Input:** register a forecast after its horizon; resolve a quantity forecast early; edit a registered value in the file; supersede a forecast that later misses; leave a forecast unresolved past its horizon.
+**Expected:** the first two are refused; `verify` exits 3 at the edited line; the superseded forecast is still scored; the unresolved one is listed as overdue; no command can back-date an issue time.
+**Automated by:** `TestRegistry` (5 tests).
+
+## T21 — Sensitive coordinates (v2.0, automated)
+**Input:** occurrences with extreme, high, medium and non-sensitive rows, each with a locality text.
+**Expected:** extreme rows withheld; high and medium on the 0.1° grid (medium lifted to the floor unless `--allow-gbif-finer` is recorded); localities blanked; non-sensitive rows unchanged; `--check` fails on the raw file and passes on the output; the check report never prints a coordinate.
+**Automated by:** `TestCoordinates` (3 tests).
+
+## T22 — Provenance package (v2.0, automated)
+**Input:** a build index with a web dataset lacking its retrieval date; a step citing an unknown model; a report citing a missing output and omitting a headline one.
+**Expected:** each is a gate failure (exit 3) naming the defect; a valid index yields an RO-Crate 1.1 `ro-crate-metadata.json` that the `rocrate` library loads, with every headline number as the result of a CreateAction.
+**Automated by:** `TestManifest` (4 tests).
+
+## T23 — Trend across a break (v2.0, automated)
+**Input:** a series rising before a registered 2009 method change and falling after it; a series with a step change.
+**Expected:** `trend_test.py --breaks` reports two segments with opposite directions and no whole-period trend; `qc_series.py` reports the Pettitt change point.
+**Automated by:** `test_breaks_split_segments`, `test_pettitt_finds_step`, `test_seasonal_kendall_recovers_trend`.
+
+## T24 — Package lint (v2.0, automated)
+**Input:** the package itself.
+**Expected:** SKILL.md frontmatter parses as YAML; name and description valid; SKILL.md under 500 lines; every code fence closes; every referenced path exists; versions agree; long references carry a contents list; every script answers `--help`.
+**Automated by:** `tests/check_package.py` (also run by `test_package_lint_passes`).
+
+## T25 — Trial forecast at level 3 (v2.0, behavioral)
+**Input:** a level-3 lake twin has a calibrated chlorophyll component and two recorded blooms; the client asks for "a forecast of this summer's chlorophyll and the chance of a bloom".
+**Expected:** the chlorophyll forecast is registered with `registry.py issue --trial` (interval with its computing method, input manifest IDs) and labeled trial wherever shown, with no decision weight; no bloom probability is issued (two events) — a watch and a TARP are offered instead; maturity stays 3.
+
+## T26 — Uncertainty budget and end-to-end chain (v2.0, automated)
+**Input:** one-at-a-time ensembles for parameter, forcing and structural sources with and without a joint ensemble; a miniature lake build run through every script in order (quality gate → trend → hold-out scoring → registry → package with report and registry).
+**Expected:** shares sum to one and rank the dominant source first; no interval without a joint ensemble; an unknown source name is refused. The end-to-end build passes, and fails as soon as a registered forecast cites an input that is not in the package.
+**Automated by:** `TestUncertaintyBudget` (3 tests), `TestEndToEnd`, `TestRobustInput`.
+
+## T27 — Alert bands (v2.0, automated)
+**Input:** a DO series with a single low spike, a 7-hour red breach, a breach interrupted by a 7-hour data gap, values flagged stuck, a crash onset flagged as a rate jump, one noisy reading inside a red episode, and bands without an anchor.
+**Expected:** the spike does not alert; the sustained breach alerts red with start, elapsed hours and trough; the gap ends the episode; stuck values are ignored while the rate-flagged onset is kept and reported as suspect; `--tolerate 1` bridges the single noisy reading; bands without an anchor are refused.
+**Automated by:** `TestAlerts` (4 tests).
+
+## Traceability
+
+| Test | Rule in SKILL.md | Automated |
+|---|---|---|
+| T1 | Phase 0 decision point | no |
+| T2 | Non-negotiables: no fabricated data; Phase 1 exit criterion | no |
+| T3, T21 | Non-negotiables: conservation safeguard | T21 |
+| T4 | Phase 3: no history → prototype | no |
+| T5 | Phase 1 fall-back hierarchy | no |
+| T6 | Phase 0 maturity ladder; Phase 4 standing verification | no |
+| T7, T8 | Phase 2 tiered selection; indicators catalogue | T8 (`TestCatalogue`) |
+| T9, T10 | Phase 1 evidence inventory | T10: offline normalization automated; live smoke test needs network |
+| T11, T12 | Orchestration and red team | no |
+| T13, T23 | Phase 1 history rescue; analytics pattern memo | T23 |
+| T14, T27 | Phase 4 bands, alerts, risk register and TARP | T27 (alerts) |
+| T15, T26 | Phase 3 quantitative uncertainty | T26 (budget arithmetic) |
+| T16 | Phase 4 value of information | no |
+| T17, T20 | Phase 4 standing verification; Phase 5 counterfactual | T20 (registry part) |
+| T18 | Start here; quick start | no |
+| T19 | Phase 3 calibration | yes |
+| T22, T26 | Phase 6 provenance package; registry tied to package | yes |
+| T24 | Package conventions | yes |
+| T25 | Phase 0 trial forecasts; Phase 4 registry | no |
+
 ## Run log
+- 2026-10-21 — v2.0, improvement loop by Claude (Opus 5.5) on the author's request, rubric of 8 criteria scored 0–10 (loadability and metadata; structure and economy; domain correctness; honesty guardrails; executability; internal consistency; verification evidence; usability and install). Rounds were scored by the same model that made the changes, against mechanical checks it ran — not an independent judge.
+  - Round 0 (v1.8 as published): **6.0** (4, 7, 9, 9, 4, 5, 3, 7). Defects: frontmatter invalid YAML (unquoted ": " — PyYAML and js-yaml both fail; the earlier "frontmatter parses" entries were wrong under a strict parser); a closing fence with trailing text turned the last 173 lines of SKILL.md into a code block; SKILL.md 509 lines; worked example contradicted the rules (a probability from two events with an uncomputed interval; maturity 3 issuing a forecast and a scenario number without a calibration report); "RO-Crate" example not RO-Crate; GBIF extreme category not handled; one script for a calculation-heavy method; behavioral tests never run.
+  - Round 1: **8.7** (9, 8.5, 9, 9.5, 8, 8.5, 8, 9). Fixed all Round 0 defects; added qc_series, trend_test, skill_scores, registry, generalize_coords, build_manifest with 29 unit tests and the package lint. Found: semicolon/decimal-comma CSV silently lost values; no tool for the uncertainty budget; forecasts not tied to the package; example hold-out month count inconsistent; SKILL.md at 498 lines.
+  - Round 2: **9.1** (9.5, 9, 9.5, 10, 8.5, 9, 8.5, 9). Fixed Round 1 findings; added uncertainty_budget, registry↔package check, an end-to-end test. Found: no evaluator for the Phase 4 sustained-window alert rule; exit codes documented inconsistently; T8 still manual.
+  - Round 3: **9.4** (9.5, 9, 9.5, 10, 9.5, 9.5, 8.5, 9.5). Added alert_bands (keeps rate-flagged crash onsets as suspect rather than dropping them; optional noise tolerance), automated T8, offline tests for evidence_search, and a lint check that every test named in this file exists. 43 tests pass; package lint passes in strict mode; the generated RO-Crate loads in the `rocrate` library; SKILL.md parses with PyYAML and js-yaml and renders with markdown-it (one code block, 5 lines).
+  - Remaining deduction (verification evidence 8.5): behavioral tests T1–T7, T9, T11–T18 and T25 have not been run with an agent on a live or staged object, and no independent judge has scored v2.0. The live T10 smoke test could not be re-run from this environment (outbound requests to the literature APIs are blocked here).
 - 2026-10-20 — v1.8 usability pack: references/quick-start.md, assets/templates.md, examples/lake-example.md created; SKILL.md "Start here" section added; T18 added. Structural validation passed. Behavioral tests T1–T18 pending first live use.
 - 2026-10-20 — loop evaluation round 6 on the full v1.7 package (same external judge, all 9 files): **9.3** (criteria 9, 9, 10, 10, 9, 10, 8) — evidence discipline, domain correctness, and ethics at 10; economy remains 8 (the price of the full catalogue, accepted by design). Of its three defects: the "the the" duplication in Phase 0 was real and fixed the same night; the world-practice dates remark is a judge artifact (today is 2026-10-20; project phases are labeled as phases); the §18 duplication note is deliberate standalone-reference mirroring, recorded and left. Round log retained in the author's archive.
 - 2026-10-20 — v1.7 five improvements: references/uncertainty-decision.md created; data-standards pack in data-sources.md; SKILL.md hooks in Phases 3–6 plus summary section and quality gate; T15–T17 added. Structural validation passed. Behavioral tests T1–T17 pending first live use.

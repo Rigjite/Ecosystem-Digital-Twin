@@ -1,5 +1,10 @@
 # Orchestration, multi-agent work, and red team
 
+## Contents
+Scale tiers · Roles · Task contracts · Conflict resolution · Independence
+rules · Red-team gates (A design, B calibration, C delivery) · Cost and
+effort discipline · Implementation note
+
 A digital twin built by one operator follows Phases 0–6 directly. Larger or
 higher-stakes builds run through an orchestrated multi-agent layer defined
 here. The layer exists to buy **independence and parallelism** — separate

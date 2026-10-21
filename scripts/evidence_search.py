@@ -22,11 +22,12 @@ import json
 import re
 import sys
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-UA = "ecosystem-digital-twin/1.8 evidence-search"
+UA = "ecosystem-digital-twin/2.0 evidence-search"
 TIMEOUT = 25
 
 
@@ -115,7 +116,11 @@ def search_europepmc(query, limit, email):
     for r in results:
         author_str = clean(r.get("authorString") or "")
         authors = author_str.rstrip(".")
-        first_author = authors.split(",")[0].strip() or None
+        first = authors.split(",")[0].strip()
+        parts = first.split()
+        if len(parts) > 1 and parts[-1].isupper() and len(parts[-1]) <= 3:
+            first = " ".join(parts[:-1])  # "Smith JA" -> "Smith", as the other sources report it
+        first_author = first or None
         pmid = r.get("pmid")
         records.append({
             "title": clean(r.get("title") or ""), "authors": authors,
@@ -210,6 +215,9 @@ def main():
     parser.add_argument("--delay", type=float, default=0.4, help="seconds between requests")
     args = parser.parse_args()
 
+    if not args.email:
+        print("[warn] no --email given: NCBI asks for a contact address, and Crossref/OpenAlex "
+              "polite pools need one", file=sys.stderr)
     wanted = [s.strip() for s in args.sources.split(",") if s.strip()]
     unknown = [s for s in wanted if s not in SOURCES]
     if unknown:
@@ -223,6 +231,13 @@ def main():
             found = SOURCES[name](args.query, args.limit, args.email)
             print(f"[{name}] {len(found)} records", file=sys.stderr)
             all_records.extend(found)
+        except urllib.error.HTTPError as exc:
+            failures.append(name)
+            if exc.code == 429:
+                print(f"[{name}] THROTTLED (HTTP 429): source skipped, not retried; "
+                      "add an API key or retry later", file=sys.stderr)
+            else:
+                print(f"[{name}] FAILED: HTTP {exc.code}", file=sys.stderr)
         except Exception as exc:  # one dead platform must not kill the search
             failures.append(name)
             print(f"[{name}] FAILED: {exc}", file=sys.stderr)
@@ -234,6 +249,9 @@ def main():
         print(f"[ok] {len(all_records)} records -> {args.output}", file=sys.stderr)
     else:
         print(payload)
+    if failures:
+        print(f"[summary] failed or skipped sources: {', '.join(failures)} - record this as a search "
+              "limitation in the evidence log", file=sys.stderr)
     if failures and len(failures) == len(wanted):
         return 2
     return 0 if all_records else 1

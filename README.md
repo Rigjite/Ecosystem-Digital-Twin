@@ -14,7 +14,7 @@ for a client (a farm, a water-body manager, a conservation project, a
 municipality), and a **research instrument** for the operator's own
 science.
 
-Current version: **1.8** (2026-10-20). License: CC BY 4.0.
+Current version: **2.0** (2026-10-21). License: CC BY 4.0.
 
 ## What the skill covers
 
@@ -61,6 +61,20 @@ Current version: **1.8** (2026-10-20). License: CC BY 4.0.
   scenario round; the burden of justification sits on the engineered
   option.
 
+## Install
+
+The skill folder must be named `ecosystem-digital-twin` — the `name` in
+`SKILL.md` — whatever this repository is called.
+
+- **Claude Code:** `git clone https://github.com/Rigjite/Ecosystem-Digital-Twin ~/.claude/skills/ecosystem-digital-twin`
+- **Claude app (claude.ai, desktop, mobile):** zip the folder so that
+  `ecosystem-digital-twin/SKILL.md` sits at the top of the archive, and
+  upload it as a custom skill in the app's skills settings.
+- **Other Agent Skills clients:** copy the folder into the client's skills
+  directory.
+
+Check an install from the skill folder: `python3 tests/check_package.py --strict`.
+
 ## Quick start
 
 1. Read [`references/quick-start.md`](references/quick-start.md) — the
@@ -87,22 +101,32 @@ Current version: **1.8** (2026-10-20). License: CC BY 4.0.
 | `references/quick-start.md` | The one-page execution path and file map |
 | `assets/templates.md` | The five fillable forms |
 | `examples/lake-example.md` | A worked miniature build (all values illustrative) |
+| `scripts/qc_series.py` | Data quality gate: range, rate, stuck, duplicate, gap, neighbor and change-point checks; flags only |
+| `scripts/trend_test.py` | Mann–Kendall / Sen slope per segment between registered breaks; seasonal Kendall; autocorrelation handling |
+| `scripts/skill_scores.py` | Calibration and verification: declared hold-out, naive baselines, NSE/KGE/RMSE, POD/FAR/CSI, Brier with reliability |
+| `scripts/uncertainty_budget.py` | Uncertainty budget by source from ensemble runs; intervals only from a joint ensemble |
+| `scripts/alert_bands.py` | Amber/red alert bands with named anchors and sustained-breach windows |
+| `scripts/registry.py` | Append-only, hash-chained forecast registry; scores forecasts exactly as issued |
+| `scripts/generalize_coords.py` | Sensitive-species coordinate generalization (GBIF categories, 0.1° floor) with a pre-sharing check |
+| `scripts/build_manifest.py` | RO-Crate 1.1 provenance package; checks that every headline number is traced and cited |
 | `scripts/evidence_search.py` | Literature retrieval across PubMed, Europe PMC, OpenAlex, Crossref; emits normalized JSON |
-| `tests/TESTS.md` | Saved behavioral tests (T1–T18) with a run log |
+| `tests/test_scripts.py`, `tests/check_package.py` | Unit tests of the scripts and the package lint (`python3 -m unittest discover -s tests`) |
+| `tests/TESTS.md` | Behavioral and automated tests (T1–T27) with a traceability table and run log |
 | `CHANGELOG.md` | Version history |
 
 ## Development and evaluation
 
 The skill was developed iteratively: each capability layer was added
 against the failure modes of the previous version, and the package was
-scored in repeated external-judge evaluation rounds (the run log,
-including scores and the defects found and fixed, is in
-`tests/TESTS.md`). Behavioral tests are executed against live projects;
-the run log states plainly which are still pending a first live use.
+scored in repeated evaluation rounds (the run log, including scores and
+the defects found and fixed, is in `tests/TESTS.md`). Since v2.0 the rules
+that can be computed are enforced by scripts with unit tests; behavioral
+tests are executed against live projects, and the run log states plainly
+which are still pending a first live use.
 
 ## Citation
 
-Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v1.8).
+Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.0).
 https://github.com/Rigjite/Ecosystem-Digital-Twin
 
 ## License
