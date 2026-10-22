@@ -24,3 +24,5 @@ License: CC BY 4.0, as the rest of this repository.
 `trophic_classes.py` — the same scenarios in absolute TP (µg/L) against OECD (1982) trophic classes (eutrophic 35–100, hypertrophic > 100 µg/L): how many of the 27 combinations cross 100 µg/L or reach 35 µg/L at 50 years, and the external-load cut needed to reach 35 µg/L, alone and after S3.
 
 `twin_update.py` — the update step of the twin: each of the 27 combinations is taken in turn as the true lake, its internal-load share is "measured" with an error of ±5, ±10 or ±15 percentage points, incompatible combinations are rejected and the forecast is recomputed. Prints the median number of members kept and how much the scenario ranges narrow at 5, 10 and 50 years; also shows that TP monitoring under an unchanged load cannot tell the members apart.
+
+`figures/` — Figures 1–3 of the paper (PNG, 300 dpi): the twin cycle with the AI-agent team, the Lake Kotokel twin cycle, and the scenario trajectories.
