@@ -1,5 +1,14 @@
 # ecosystem-digital-twin — Changelog
 
+## Unreleased
+- examples/beira/: worked example on Beira Lake (Colombo) from published data
+  only — state against the authors' thresholds, cross-check with three
+  independent studies (2024–2026), a Gate-B-style check of the source, the
+  arithmetic of what a wetland alone can achieve (Carlson TSI), the value of
+  information of a sludge analysis in relative units, a registered trial
+  forecast, and the data gaps that keep the twin at maturity 2. Unit tests
+  in tests/test_example_beira.py.
+
 ## v2.2 — 2026-10-21
 - trend_test.py: the default correction for serial correlation is now the
   Hamed & Rao (1998) variance correction (detrended ranks, significant lags

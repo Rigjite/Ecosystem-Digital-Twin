@@ -149,6 +149,7 @@ threshold or fails to beat a naive baseline.
 | `assets/templates.md` | The five fillable forms |
 | `examples/lake-example.md` | A worked miniature build (all values illustrative) |
 | `examples/open-series-demo.md`, `examples/open_series_demo.py` | The core run on three public series (Nile, Lake Huron, Mauna Loa CO2) — real, reproducible results |
+| `examples/beira/` | Worked example on a real lake (Beira Lake, Colombo) from published data only: state vs thresholds, cross-check with independent studies, a source check, decision arithmetic for wetlands, value of a sludge analysis, a registered trial forecast, and the data gaps |
 | `scripts/` | The calculation toolkit above |
 | `tests/test_scripts.py`, `tests/check_package.py` | Unit and end-to-end tests of the scripts; the package lint |
 | `tests/TESTS.md` | Behavioral and automated tests (T1–T29), traceability table, run log |
