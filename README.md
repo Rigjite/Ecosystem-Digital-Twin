@@ -182,7 +182,8 @@ Issues and suggestions are welcome.
 Use GitHub's **Cite this repository** button (from [`CITATION.cff`](CITATION.cff)), or:
 
 Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.2).
-https://github.com/Rigjite/Ecosystem-Digital-Twin https://doi.org/10.5281/zenodo.23608283
+<https://github.com/Rigjite/Ecosystem-Digital-Twin>\
+DOI: [10.5281/zenodo.23608283](https://doi.org/10.5281/zenodo.23608283)
 
 ## License
 
