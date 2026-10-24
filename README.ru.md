@@ -186,8 +186,8 @@ python3 scripts/skill_scores.py continuous flows.csv \
 Кнопка **Cite this repository** на GitHub (из [`CITATION.cff`](CITATION.cff)) или:
 
 Балданова Р. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.2).
-https://github.com/Rigjite/Ecosystem-Digital-Twin
-DOI: 10.5281/zenodo.23608283
+<https://github.com/Rigjite/Ecosystem-Digital-Twin>\
+DOI: [10.5281/zenodo.23608283](https://doi.org/10.5281/zenodo.23608283)
 
 ## Лицензия
 
