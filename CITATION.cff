@@ -6,6 +6,7 @@ authors:
   - family-names: Baldanova
     given-names: Rigjita
 version: "2.2"
+doi: 10.5281/zenodo.23608283
 date-released: "2026-10-21"
 license: CC-BY-4.0
 repository-code: "https://github.com/Rigjite/Ecosystem-Digital-Twin"
