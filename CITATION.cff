@@ -5,6 +5,8 @@ type: software
 authors:
   - family-names: Baldanova
     given-names: Rigjita
+    orcid: "https://orcid.org/0009-0009-7891-7007"
+    affiliation: "PCS Co., Ltd., Sapporo, Japan"
 version: "2.2"
 doi: 10.5281/zenodo.23608283
 date-released: "2026-10-21"
