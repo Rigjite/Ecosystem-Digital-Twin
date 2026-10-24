@@ -17,11 +17,6 @@
 - examples/open-series-demo.md and open_series_demo.py: the core run on three public series
   (Nile flow, Lake Huron level, Mauna Loa CO2), reproducible with one command.
 - Tests: 48 automated (Hamed–Rao reference value; fixed persistence).
-- examples/kotokel/: prototype twin of Lake Kotokel (two-compartment phosphorus
-  balance, 27-member parameter ensemble, initial TP from 86 samples of
-  2024–2025): scenarios, OECD trophic classes, value of information and the
-  update step (rejecting ensemble members incompatible with a measurement).
-  Standard library only; code behind Baldanova & Suzuki (2026).
 
 ## v2.1 — 2026-10-21
 - Multi-model runner protocol (references/orchestration.md) for councils
