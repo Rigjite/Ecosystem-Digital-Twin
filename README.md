@@ -148,7 +148,6 @@ threshold or fails to beat a naive baseline.
 | `assets/templates.md` | The five fillable forms |
 | `examples/lake-example.md` | A worked miniature build (all values illustrative) |
 | `examples/open-series-demo.md`, `examples/open_series_demo.py` | The core run on three public series (Nile, Lake Huron, Mauna Loa CO2) — real, reproducible results |
-| `examples/kotokel/` | Prototype twin of Lake Kotokel: phosphorus scenarios, trophic classes, value of information and the twin-update step (code behind Baldanova & Suzuki 2026) |
 | `scripts/` | The calculation toolkit above |
 | `tests/test_scripts.py`, `tests/check_package.py` | Unit and end-to-end tests of the scripts; the package lint |
 | `tests/TESTS.md` | Behavioral and automated tests (T1–T29), traceability table, run log |
@@ -170,7 +169,7 @@ threshold or fails to beat a naive baseline.
 
 - Pilot build on a real water body with open data; run the behavioral tests
   live and publish the run log.
-- Independent cross-vendor evaluation round of version 2.1.
+- Independent cross-vendor evaluation round of version 2.2.
 - Data-access helpers: GBIF downloads with citable DOIs, Sentinel-2 via STAC.
 - Export of the forecast registry in the Ecological Forecasting Initiative
   output and metadata standard.
