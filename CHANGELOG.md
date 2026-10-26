@@ -21,6 +21,7 @@
   SS_RMSE > 0 on the declared hold-out; null for in-sample fits). The
   existing MSE-ratio skill scores are kept and documented as differing from
   SS_RMSE in value while sharing the > 0 boundary.
+- Zenodo DOI for v2.3: 10.5281/zenodo.23657185 (release 2026-10-26; author Baldanova, Rigjita, ORCID 0009-0009-7891-7007, PCS Co., Ltd., Sapporo, Japan).
 - Editorial cleanup (2026-10-26, pre-release): the draft meta-comment above the I/O table is replaced by a direct instruction, and the two template headings are demoted to #### so they no longer compete with ### Template 1 / 2.
 - Verification fix (2026-10-25, independent check): Stage 7 wording corrected — forecast uncertainty is narrowed by assimilating observations, not by alert_bands.py (which recomputes the alert bands).
 - Package completeness: all 9 scripts kept (evidence_search.py and
