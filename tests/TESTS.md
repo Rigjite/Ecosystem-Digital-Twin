@@ -1,4 +1,4 @@
-# ecosystem-digital-twin — saved test inputs (v2.2)
+# ecosystem-digital-twin — saved test inputs (v2.3)
 
 Run these after any change to the package. Automated checks first, from the
 skill root:
@@ -137,6 +137,36 @@ the run log below before shipping.
 **Input:** a Tier M lake build where the orchestrator runs in an agent's code sandbox and convenes three models from two developers through a router; the client's sensor series and a red-listed species record are in the inventory; one council member answers with its own chlorophyll trend estimate; a hypoxia alert fires during the run.
 **Expected:** the passport records the pinned skill version, host, router, providers, consent, and model IDs before any brief is sent; briefs hold capped script summaries and manifest IDs, not raw series, and the species record only after `generalize_coords.py --check` passes; the member's own trend number is discarded and the member asked again against the `trend_test.py` output; the alert goes from `alert_bands.py` to the named human without waiting for the council; every exchange is logged into the build index with the run's cost.
 
+## T30 — Water-quality indices (v2.3, automated)
+**Input:** hand-computed WPI/TSI/HPI cases plus the new `--mode` flags and the
+JSON trend input: WPI over BOD5/NH4/NO3 with a dissolved-oxygen term;
+Carlson TSI from Secchi depth 2 m, chlorophyll-a 10 µg/L, TP 30 µg/L;
+HPI over Pb/Cd with and without an ideal value; a strictly increasing
+12-value JSON series; `--mode wpi/tsi/hpi` CLI runs; an empty indicator
+list.
+**Expected:** WPI = (2.0 + 0.8 + 0.9) / 3 ≈ 1.2333, class "moderately
+polluted (III)"; DO ratio inverted below the standard (MAC/C = 1.5) and 1.0
+at/above it; TSI(SD) ≈ 50.01, TSI(Chl) ≈ 53.19, TSI(TP) ≈ 53.20, composite
+≈ 52.13, class "eutrophic"; HPI = (8 + 8) / 0.3 ≈ 53.33, not critical,
+and 250 (critical) for Pb at 25 against a standard of 10; JSON trend input
+returns the spec keys (`s_stat` 66, `trend` "increasing", Theil–Sen slope
+≈ 12/yr); invalid inputs exit 2.
+**Automated by:** `TestIndices` (8 tests).
+
+## T31 — SS_RMSE and the admission verdict (v2.3, automated)
+**Input:** `ss_rmse` hand values; a model that IS the rolling persistence
+(sim = previous observation) scored on a declared hold-out; a good model
+(sim ≈ obs) on a declared hold-out; a perfect in-sample fit scored with
+`--no-holdout`.
+**Expected:** ss_rmse(1, 2) = 0.5, (2, 2) = 0.0, (3, 2) = −0.5, and None
+when the naive baseline has zero error; the persistence-tied model has
+SS_RMSE exactly 0.0 and verdict `REJECTED_BELOW_BENCHMARK` (admission needs
+strictly > 0) with gate exit 3; the good model is `ADMITTED` with SS_RMSE
+> 0, and SS_RMSE differs in value from the MSE-ratio skill score while
+sharing its > 0 boundary; the in-sample fit gets no verdict
+(`admission_verdict` null) with a warning.
+**Automated by:** `TestSSRMSE` (4 tests).
+
 ## Traceability
 
 | Test | Rule in SKILL.md | Automated |
@@ -162,8 +192,29 @@ the run log below before shipping.
 | T25 | Phase 0 trial forecasts; Phase 4 registry | no |
 | T28 | Scripts: capped summaries | yes |
 | T29 | Orchestration: multi-model runner protocol; Phase 4 no-LLM alert path | no |
+| T30 | Core Mathematical Specifications: WPI, Carlson TSI, HPI; index modes | yes |
+| T31 | Core Mathematical Specifications: SS_RMSE, admission verdict | yes |
 
 ## Run log
+- 2026-10-25 — v2.3: SKILL.md rewritten to the v2.3 specification (strict
+  formulas, Object Passport + Safety Gate templates, I/O-schema table,
+  governance); trend_test.py gains WPI/TSI/HPI + `--mode` + JSON trend
+  input; skill_scores.py gains SS_RMSE + admission verdict; all 9 scripts
+  kept. Verification: 67 tests pass (60 in test_scripts.py, incl. 12 new:
+  T30 8 tests, T31 4 tests); strict lint passes (checked from a copy
+  installed as `ecosystem-digital-twin/`); dry-run on the synthetic cascade
+  case "water body → subcritical sludge processing → agricultural field"
+  (dry-run-cascade/dry-run-report.md): WPI 1.53, TSI composite 58.26
+  (eutrophic), HPI 154.54 (critical), Safety Gate NO, model ADMITTED
+  (SS_RMSE 0.4224, NSE 0.788), registry hash chain verifies, tampering
+  detected (exit 3), RO-Crate package passes 0 errors / 0 warnings.
+  Spec-vs-code mismatches found and fixed: the draft I/O table described
+  JSON contracts the scripts do not have (corrected to the real CLI/file
+  interfaces); `ss_rmse` vs the kept MSE-ratio skill score (same > 0
+  boundary, different value); the passport template now uses the skill's
+  5-level maturity ladder. Release-time steps still open: new Zenodo DOI
+  for v2.3 (CITATION.cff still carries the v2.2 DOI) and the README
+  citation block update.
 - 2026-10-21 — v2.2: demonstration runs on three open series (Nile flow at Aswan 1871–1970; Lake Huron level 1875–1972; Mauna Loa CO2 1958–2001) for the author's review article exposed two method defects, fixed here: TFPW overstated a trend in a strongly autocorrelated series (now Hamed–Rao by default, cross-checked against pymannkendall), and one-step persistence was the only baseline for multi-year forecasts (now `--persistence fixed`). 48 tests pass; strict lint passes.
 - 2026-10-21 — v2.1: multi-model runner protocol, no-LLM alert path, working rules, capped summaries; T28 automated (2 tests), T29 behavioral. Prompted by an external model's review of v2.0: its valid points (who runs the scripts in a multi-model setup; alerts must stay deterministic; summaries must stay small) are adopted; its claims that v2.0 had replaced the red team with linters or cut the roles were checked against the git diff and not confirmed (references/orchestration.md had only gained a contents list). 47 tests pass; strict lint passes.
 - 2026-10-21 — repository page for v2.0: README (EN/RU) rewritten with a process diagram, install notes and an honest status section; CITATION.cff (validated against CFF schema 1.2.0); GitHub Actions workflow running the tests and the strict lint on Python 3.9 and 3.12. Running the suite on Python 3.9 without PyYAML exposed a bug in the lint's fallback frontmatter parser (an empty value read as an unterminated quote; nested metadata ignored); fixed, with two tests forcing the fallback. 45 tests pass on 3.9 and 3.12.

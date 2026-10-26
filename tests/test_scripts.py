@@ -730,6 +730,168 @@ class TestLintParser(unittest.TestCase):
         self.assertIn("minimal", parser)
 
 
+class TestIndices(Tmp):
+    """v2.3 water-quality indices (T30): WPI, Carlson TSI, HPI, index modes."""
+    m = load("trend_test")
+
+    def test_wpi_hand_value(self):
+        r = self.m.water_pollution_index([
+            {"name": "BOD5", "concentration": 6, "mac": 3},
+            {"name": "NH4", "concentration": 0.4, "mac": 0.5},
+            {"name": "NO3", "concentration": 9, "mac": 10},
+        ])
+        self.assertAlmostEqual(r["wpi"], 3.7 / 3, places=4)  # (2.0 + 0.8 + 0.9) / 3
+        self.assertEqual(r["n"], 3)
+        self.assertEqual(r["class"], "moderately polluted (III)")
+
+    def test_wpi_dissolved_oxygen_inverted(self):
+        r = self.m.water_pollution_index([
+            {"name": "DO", "concentration": 4, "mac": 6, "dissolved_oxygen": True}])
+        self.assertAlmostEqual(r["terms"][0]["ratio"], 1.5)  # MAC/C below the standard
+        r = self.m.water_pollution_index([
+            {"name": "DO", "concentration": 8, "mac": 6, "dissolved_oxygen": True}])
+        self.assertAlmostEqual(r["terms"][0]["ratio"], 1.0)  # at/above the standard: no excess
+        with self.assertRaises(ValueError):
+            self.m.water_pollution_index([{"name": "X", "concentration": 1, "mac": 0}])
+        with self.assertRaises(ValueError):
+            self.m.water_pollution_index([])
+
+    def test_tsi_hand_value(self):
+        r = self.m.carlson_tsi(sd_m=2, chl_ug_l=10, tp_ug_l=30)
+        # Hand-computed: 60-14.41*ln2; 9.81*ln10+30.6; 14.42*ln30+4.15
+        self.assertAlmostEqual(r["tsi_sd"], 50.0117, places=4)
+        self.assertAlmostEqual(r["tsi_chl"], 53.1884, places=4)
+        self.assertAlmostEqual(r["tsi_tp"], 53.1953, places=4)
+        self.assertAlmostEqual(r["tsi_composite"], 52.1318, places=4)
+        self.assertEqual(r["class"], "eutrophic")
+
+    def test_tsi_partial_and_invalid(self):
+        r = self.m.carlson_tsi(sd_m=2)
+        self.assertAlmostEqual(r["tsi_composite"], r["tsi_sd"])
+        self.assertIsNone(r["tsi_chl"])
+        self.assertEqual(r["class"], "eutrophic")  # 50.01 is in the 50-70 band
+        with self.assertRaises(ValueError):
+            self.m.carlson_tsi()
+        with self.assertRaises(ValueError):
+            self.m.carlson_tsi(chl_ug_l=0)
+
+    def test_hpi_hand_value(self):
+        r = self.m.heavy_metal_pollution_index([
+            {"name": "Pb", "measured": 8, "standard": 10, "ideal": 0},
+            {"name": "Cd", "measured": 2, "standard": 5, "ideal": 0},
+        ])
+        # W: 0.1, 0.2; Q: 80, 40; HPI = (8 + 8) / 0.3
+        self.assertAlmostEqual(r["hpi"], 53.3333, places=4)
+        self.assertFalse(r["critical"])
+        self.assertEqual(r["threshold"], 100)
+
+    def test_hpi_critical_and_ideal(self):
+        r = self.m.heavy_metal_pollution_index([
+            {"name": "Pb", "measured": 25, "standard": 10, "ideal": 0}])
+        self.assertAlmostEqual(r["hpi"], 250.0)
+        self.assertTrue(r["critical"])
+        r = self.m.heavy_metal_pollution_index([
+            {"name": "Zn", "measured": 30, "standard": 100, "ideal": 10}])
+        self.assertAlmostEqual(r["hpi"], 100 * 20 / 90, places=4)  # single metal: HPI == Q
+        with self.assertRaises(ValueError):
+            self.m.heavy_metal_pollution_index([{"name": "X", "measured": 1, "standard": 5, "ideal": 5}])
+
+    def test_trend_json_input(self):
+        wtext(self.p("t.json"), json.dumps({
+            "values": list(range(1, 13)),
+            "timestamps": [f"2020-{k:02d}-01" for k in range(1, 13)]}))
+        code, out, _ = run("trend_test.py", self.p("t.json"))
+        self.assertEqual(code, 0)
+        self.assertEqual(out["mode"], "trend")
+        self.assertEqual(out["s_stat"], 66)  # strictly increasing 12 values: 12*11/2
+        self.assertEqual(out["trend"], "increasing")
+        self.assertLess(out["p_value"], 0.05)
+        self.assertAlmostEqual(out["theil_sen_slope"], 12.0, places=1)  # +1/month
+        self.assertIn("hamed_rao_factor", out)
+
+    def test_mode_flags_cli(self):
+        wtext(self.p("w.json"), json.dumps({"indicators": [
+            {"name": "BOD5", "concentration": 6, "mac": 3},
+            {"name": "NH4", "concentration": 0.4, "mac": 0.5}]}))
+        code, out, _ = run("trend_test.py", self.p("w.json"), "--mode", "wpi")
+        self.assertEqual(code, 0)
+        self.assertAlmostEqual(out["wpi"], 1.4, places=4)  # (2.0 + 0.8) / 2
+        wtext(self.p("h.json"), json.dumps({"metals": [
+            {"name": "Pb", "measured": 25, "standard": 10, "ideal": 0}]}))
+        code, out, _ = run("trend_test.py", self.p("h.json"), "--mode", "hpi")
+        self.assertEqual(code, 0)
+        self.assertTrue(out["critical"])
+        wtext(self.p("bad.json"), json.dumps({"indicators": []}))
+        code, _, err = run("trend_test.py", self.p("bad.json"), "--mode", "wpi")
+        self.assertEqual(code, 2)
+        self.assertIn("at least one indicator", err)
+
+
+class TestSSRMSE(Tmp):
+    """v2.3 SS_RMSE and admission verdict (T31)."""
+    m = load("skill_scores")
+
+    def test_ss_rmse_hand_value(self):
+        self.assertAlmostEqual(self.m.ss_rmse(1.0, 2.0), 0.5)
+        self.assertAlmostEqual(self.m.ss_rmse(2.0, 2.0), 0.0)
+        self.assertAlmostEqual(self.m.ss_rmse(3.0, 2.0), -0.5)
+        self.assertIsNone(self.m.ss_rmse(0.0, 0.0))  # perfect baseline: ratio undefined
+        self.assertIsNone(self.m.ss_rmse(1.0, 0.0))
+
+    def _persistence_model_csv(self, path):
+        # sim == previous observation: the model IS the rolling persistence
+        rows, d = [], date(2020, 1, 15)
+        obs = [10 + k + (k % 2) for k in range(24)]
+        for k, o in enumerate(obs):
+            sim = obs[k - 1] if k else 10
+            rows.append([d.isoformat(), o, sim])
+            d = (d.replace(day=1) + timedelta(days=32)).replace(day=15)
+        write_csv(path, ["time", "obs", "sim"], rows)
+
+    def test_admission_boundary(self):
+        # SS_RMSE == 0 exactly: the model ties the naive baseline, so the
+        # verdict must be REJECTED (admission needs strictly > 0).
+        self._persistence_model_csv(self.p("p.csv"))
+        code, out, _ = run("skill_scores.py", "continuous", self.p("p.csv"),
+                           "--train-end", "2020-12-31", "--season", "none")
+        self.assertEqual(code, 3)  # gate fails: baseline not beaten
+        self.assertAlmostEqual(out["ss_rmse"], 0.0)
+        self.assertEqual(out["admission_verdict"], "REJECTED_BELOW_BENCHMARK")
+
+    def test_good_model_admitted(self):
+        rows, d = [], date(2015, 1, 15)
+        import random
+        rng = random.Random(11)
+        for k in range(72):
+            obs = 10 + 5 * math.sin(2 * math.pi * (d.month - 1) / 12) + rng.gauss(0, 1.5)
+            sim = obs + (0.1 if k % 2 else -0.1)
+            rows.append([d.isoformat(), f"{obs:.4f}", f"{sim:.4f}"])
+            d = (d.replace(day=1) + timedelta(days=32)).replace(day=15)
+        write_csv(self.p("s.csv"), ["time", "obs", "sim"], rows)
+        code, out, _ = run("skill_scores.py", "continuous", self.p("s.csv"),
+                           "--train-end", "2018-12-31", "--thresholds", "NSE>=0.5")
+        self.assertEqual(code, 0, out)
+        self.assertGreater(out["ss_rmse"], 0)
+        self.assertEqual(out["admission_verdict"], "ADMITTED")
+        # SS_RMSE and the MSE-ratio skill share the > 0 boundary, not the value.
+        self.assertGreater(out["metrics"]["skill_vs_persistence"], 0)
+        self.assertNotAlmostEqual(out["metrics"]["skill_vs_persistence"], out["ss_rmse"])
+        # Cross-check: SS_RMSE == 1 - RMSE_model / sqrt(MSE_persistence).
+        expect = 1 - out["metrics"]["rmse"] / math.sqrt(out["baselines"][0]["mse_baseline"])
+        self.assertAlmostEqual(out["ss_rmse"], expect)
+
+    def test_no_holdout_no_verdict(self):
+        rows, d = [], date(2015, 1, 15)
+        for k in range(24):
+            rows.append([d.isoformat(), 10 + k, 10 + k])
+            d = (d.replace(day=1) + timedelta(days=32)).replace(day=15)
+        write_csv(self.p("s.csv"), ["time", "obs", "sim"], rows)
+        code, out, _ = run("skill_scores.py", "continuous", self.p("s.csv"), "--no-holdout")
+        self.assertEqual(code, 0)
+        self.assertIsNone(out["admission_verdict"])
+        self.assertIn("no admission verdict", " ".join(out["warnings"]))
+
+
 class TestPackage(unittest.TestCase):
     def test_package_lint_passes(self):
         code, out, _ = run(os.path.join("..", "tests", "check_package.py"))
