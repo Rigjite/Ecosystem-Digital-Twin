@@ -7,9 +7,10 @@ authors:
     given-names: Rigjita
     orcid: "https://orcid.org/0009-0009-7891-7007"
     affiliation: "PCS Co., Ltd., Sapporo, Japan"
-version: "2.2"
+version: "2.3"
+# NOTE: this DOI is the v2.2 release DOI; v2.3 gets a new Zenodo DOI at release.
 doi: 10.5281/zenodo.23608283
-date-released: "2026-10-21"
+date-released: "2026-10-25"
 license: CC-BY-4.0
 repository-code: "https://github.com/Rigjite/Ecosystem-Digital-Twin"
 abstract: >-

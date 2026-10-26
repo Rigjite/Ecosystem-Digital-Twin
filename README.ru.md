@@ -1,7 +1,7 @@
 # Цифровой двойник экосистемы — навык для ИИ-агентов
 
 [![tests](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml/badge.svg)](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml)
-![version 2.2](https://img.shields.io/badge/version-2.2-blue)
+![version 2.3](https://img.shields.io/badge/version-2.3-blue)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
@@ -21,7 +21,7 @@
 для заказчика (хозяйство, управляющий водоёмом, природоохранный проект,
 муниципалитет) и **исследовательский инструмент** для собственной науки.
 
-Текущая версия: **2.2** (2026-10-21). Лицензия: CC BY 4.0.
+Текущая версия: **2.3** (2026-10-25). Лицензия: CC BY 4.0.
 Текст навыка и справочники — на английском языке (`SKILL.md` и папка
 `references/`); эта страница — русское описание пакета.
 
@@ -156,14 +156,14 @@ python3 scripts/skill_scores.py continuous flows.csv \
 | `examples/beira/` | Рабочий пример на реальном озере (оз. Бейра, Коломбо) только по опубликованным данным: состояние по порогам, сверка с независимыми работами, проверка источника, расчёт для ветландов, ценность анализа ила, зарегистрированный пробный прогноз и пробелы в данных |
 | `scripts/` | Расчётные скрипты из таблицы выше |
 | `tests/test_scripts.py`, `tests/check_package.py` | Юнит- и сквозные тесты скриптов; проверка пакета |
-| `tests/TESTS.md` | Поведенческие и автоматические тесты (T1–T29), таблица прослеживаемости, журнал прогонов |
+| `tests/TESTS.md` | Поведенческие и автоматические тесты (T1–T31), таблица прослеживаемости, журнал прогонов |
 | `CHANGELOG.md`, `CITATION.cff` | История версий; данные для цитирования |
 
 </details>
 
 ## Статус и проверка
 
-- **Автоматически:** 48 юнит- и сквозных тестов и проверка пакета запускаются
+- **Автоматически:** 60 юнит- и сквозных тестов и проверка пакета запускаются
   при каждой отправке изменений (значок tests). Локально:
   `python3 -m unittest discover -s tests` и `python3 tests/check_package.py`.
 - **История оценок:** каждый раунд, его баллы, найденные и исправленные

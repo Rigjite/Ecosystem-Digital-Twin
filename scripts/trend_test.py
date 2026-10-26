@@ -35,6 +35,24 @@ Usage:
   python3 trend_test.py chl.csv --value-col chl --breaks 2009-01-01
   python3 trend_test.py tp.csv --value-col tp --seasonal month --breaks-file bias_register.csv
 
+JSON input (trend mode): a .json file {"values": [float], "timestamps":
+[ISO date or decimal year], "alpha": 0.05} prints one result with the
+spec keys s_stat, var_s_raw, hamed_rao_factor, z_corrected, p_value,
+theil_sen_slope, trend ("increasing" | "decreasing" | "no trend").
+
+Index modes (--mode wpi | tsi | hpi) take a JSON file and compute the
+water-quality indices of the skill's Core Mathematical Specifications:
+  wpi  {"indicators": [{"name": str, "concentration": float, "mac": float,
+       "dissolved_oxygen": bool}]} — WPI = mean(C/MAC); for dissolved
+       oxygen the ratio is MAC/C when C < MAC, and 1.0 at or above the
+       standard. Classes follow the standard Russian ИЗВ scale.
+  tsi  {"sd_m": float, "chl_ug_l": float, "tp_ug_l": float} (any subset) —
+       Carlson (1977) TSI per component; composite is the mean of the
+       available components.
+  hpi  {"metals": [{"name": str, "measured": float, "standard": float,
+       "ideal": float}]} — HPI = sum(W*Q)/sum(W), W = 1/S,
+       Q = 100*|M - I|/(S - I); critical when HPI > 100.
+
 Output: JSON with one result per segment. Exit 0 on success, 2 input error.
 """
 
@@ -199,6 +217,125 @@ def lag1(xs):
     return sum((xs[i] - m) * (xs[i + 1] - m) for i in range(n - 1)) / den
 
 
+# --- Water-quality indices (skill v2.3, Core Mathematical Specifications) ---
+
+def wpi_class(wpi):
+    """Standard Russian ИЗВ (water pollution index) classes."""
+    if wpi < 0.3:
+        return "very clean (I)"
+    if wpi < 1.0:
+        return "clean (II)"
+    if wpi < 2.5:
+        return "moderately polluted (III)"
+    if wpi < 4.0:
+        return "polluted (IV)"
+    if wpi < 6.0:
+        return "dirty (V)"
+    if wpi < 10.0:
+        return "very dirty (VI)"
+    return "extremely dirty (VII)"
+
+
+def water_pollution_index(indicators):
+    """WPI = mean(C_i / MAC_i) over the given indicators.
+
+    Each indicator is {"name", "concentration", "mac", "dissolved_oxygen"}.
+    For dissolved oxygen the ratio is MAC/C when C < MAC (higher oxygen is
+    better); at or above the standard the term is 1.0 — no pollution
+    contribution. MAC must be > 0, concentrations >= 0.
+    """
+    if not indicators:
+        raise ValueError("WPI needs at least one indicator")
+    terms = []
+    for ind in indicators:
+        try:
+            c = float(ind["concentration"])
+            mac = float(ind["mac"])
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(f"indicator {ind!r} needs numeric 'concentration' and 'mac'")
+        if mac <= 0:
+            raise ValueError(f"indicator {ind.get('name', '?')}: MAC must be > 0")
+        if c < 0:
+            raise ValueError(f"indicator {ind.get('name', '?')}: concentration must be >= 0")
+        if ind.get("dissolved_oxygen"):
+            ratio = mac / c if 0 < c < mac else 1.0
+        else:
+            ratio = c / mac
+        terms.append({"name": ind.get("name", "?"), "ratio": ratio,
+                      "dissolved_oxygen": bool(ind.get("dissolved_oxygen", False))})
+    wpi = sum(t["ratio"] for t in terms) / len(terms)
+    return {"wpi": wpi, "n": len(terms), "class": wpi_class(wpi), "terms": terms}
+
+
+def tsi_class(tsi):
+    """Carlson trophic bands: <40 oligotrophic, 40–50 mesotrophic,
+    50–70 eutrophic, >70 hypereutrophic (boundary values take the higher band)."""
+    if tsi < 40:
+        return "oligotrophic"
+    if tsi < 50:
+        return "mesotrophic"
+    if tsi < 70:
+        return "eutrophic"
+    return "hypereutrophic"
+
+
+def carlson_tsi(sd_m=None, chl_ug_l=None, tp_ug_l=None):
+    """Carlson (1977) trophic state index per component; composite is the
+    arithmetic mean of the available components. Each input must be > 0
+    (logarithms); at least one component is required."""
+    comps = {}
+    if sd_m is not None:
+        if sd_m <= 0:
+            raise ValueError("Secchi depth must be > 0")
+        comps["tsi_sd"] = 60 - 14.41 * math.log(sd_m)
+    if chl_ug_l is not None:
+        if chl_ug_l <= 0:
+            raise ValueError("chlorophyll-a must be > 0")
+        comps["tsi_chl"] = 9.81 * math.log(chl_ug_l) + 30.6
+    if tp_ug_l is not None:
+        if tp_ug_l <= 0:
+            raise ValueError("total phosphorus must be > 0")
+        comps["tsi_tp"] = 14.42 * math.log(tp_ug_l) + 4.15
+    if not comps:
+        raise ValueError("TSI needs at least one of sd_m, chl_ug_l, tp_ug_l")
+    vals = list(comps.values())
+    comp = sum(vals) / len(vals)
+    out = {"tsi_sd": comps.get("tsi_sd"), "tsi_chl": comps.get("tsi_chl"),
+           "tsi_tp": comps.get("tsi_tp"), "tsi_composite": comp,
+           "class": tsi_class(comp)}
+    return out
+
+
+def heavy_metal_pollution_index(metals):
+    """HPI = sum(W_i * Q_i) / sum(W_i), W_i = 1/S_i,
+    Q_i = 100 * |M_i - I_i| / (S_i - I_i). 'ideal' defaults to 0 (strictly
+    toxic). Standards must be > 0 and differ from the ideal value;
+    measured concentrations must be >= 0. Critical when HPI > 100."""
+    if not metals:
+        raise ValueError("HPI needs at least one metal")
+    terms, num, den = [], 0.0, 0.0
+    for met in metals:
+        try:
+            m = float(met["measured"])
+            s = float(met["standard"])
+            ideal = float(met.get("ideal", 0.0))
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(f"metal {met!r} needs numeric 'measured', 'standard' and 'ideal'")
+        if s <= 0:
+            raise ValueError(f"metal {met.get('name', '?')}: standard must be > 0")
+        if s == ideal:
+            raise ValueError(f"metal {met.get('name', '?')}: standard must differ from the ideal value")
+        if m < 0:
+            raise ValueError(f"metal {met.get('name', '?')}: measured concentration must be >= 0")
+        w = 1.0 / s
+        q = 100.0 * abs(m - ideal) / (s - ideal)
+        terms.append({"name": met.get("name", "?"), "w": w, "q": q})
+        num += w * q
+        den += w
+    hpi = num / den
+    return {"hpi": hpi, "critical": hpi > 100, "threshold": 100, "terms": terms}
+
+
 def regular(times):
     steps = [b - a for a, b in zip(times, times[1:])]
     if len(steps) < 2:
@@ -232,8 +369,10 @@ def test_segment(times, values, alpha, autocorr, seasonal, months):
         res["warnings"].append("covariance between seasons not corrected (Hirsch & Slack 1984); "
                                "serial correlation within seasons assumed negligible")
         s_val, var = S, V
+        res["var_s_raw"] = var
     else:
         s_val, var = mk_s_var(values)
+        res["var_s_raw"] = var
         slopes = pair_slopes(times, values)
         res["test"] = "Mann-Kendall"
         slope0 = median(slopes) if slopes else 0.0
@@ -297,9 +436,70 @@ def load_breaks(arg_breaks, breaks_file, date_col):
     return sorted(set(out))
 
 
+def run_json_trend(data, alpha, autocorr, min_n):
+    """Trend test from a JSON payload {"values": [...], "timestamps": [...]}.
+
+    Timestamps are ISO dates or decimal years (numbers are used as decimal
+    years directly). Returns the spec-keyed result dict.
+    """
+    values = data.get("values")
+    stamps = data.get("timestamps")
+    if not isinstance(values, list) or not values:
+        raise ValueError("JSON trend input needs a non-empty 'values' list")
+    if stamps is not None and len(stamps) != len(values):
+        raise ValueError("'timestamps' must match 'values' in length")
+    if data.get("alpha") is not None:
+        alpha = float(data["alpha"])
+    times, months = [], []
+    for i, v in enumerate(values):
+        if not isinstance(v, (int, float)) or not math.isfinite(v):
+            raise ValueError(f"value {i} is not a finite number")
+        stamp = stamps[i] if stamps is not None else i
+        if isinstance(stamp, (int, float)):
+            times.append(float(stamp))
+            months.append(1)
+        else:
+            t = ftime(str(stamp))
+            if t is None:
+                raise ValueError(f"timestamp {stamp!r} is not an ISO date or a number")
+            times.append(decimal_year(t))
+            months.append(t.month)
+    if len(values) < min_n:
+        return {"mode": "trend", "n": len(values), "result": None,
+                "warnings": [f"fewer than {min_n} values: no trend test"]}
+    res = test_segment(times, values, alpha, autocorr, False, months)
+    trend = {"increasing": "increasing", "decreasing": "decreasing"}.get(res["direction"], "no trend")
+    return {
+        "mode": "trend", "n": len(values), "alpha": alpha,
+        "s_stat": res["S"], "var_s_raw": res["var_s_raw"],
+        "hamed_rao_factor": res.get("variance_factor_n_over_n_eff", 1.0),
+        "z_corrected": res["Z"], "p_value": res["p_value"],
+        "theil_sen_slope": res["sen_slope_per_year"], "trend": trend,
+        "serial_correction": res.get("serial_correction"),
+        "warnings": res.get("warnings", []),
+    }
+
+
+def run_index_mode(mode, data):
+    """WPI / TSI / HPI from a JSON payload; returns the spec-keyed result."""
+    if mode == "wpi":
+        if not isinstance(data.get("indicators"), list):
+            raise ValueError("WPI mode needs an 'indicators' list")
+        return {"mode": "wpi", **water_pollution_index(data["indicators"])}
+    if mode == "tsi":
+        return {"mode": "tsi", **carlson_tsi(data.get("sd_m"), data.get("chl_ug_l"), data.get("tp_ug_l"))}
+    if mode == "hpi":
+        if not isinstance(data.get("metals"), list):
+            raise ValueError("HPI mode needs a 'metals' list")
+        return {"mode": "hpi", **heavy_metal_pollution_index(data["metals"])}
+    raise ValueError(f"unknown mode '{mode}'")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("input")
+    ap.add_argument("--mode", choices=["trend", "wpi", "tsi", "hpi"], default="trend",
+                    help="trend: Mann-Kendall test (default); wpi/tsi/hpi: water-quality index from a JSON file")
     ap.add_argument("--time-col", default="time")
     ap.add_argument("--value-col", default="value")
     ap.add_argument("--breaks", help="comma list of ISO dates where a registered break starts a new segment")
@@ -309,10 +509,24 @@ def main(argv=None):
     ap.add_argument("--autocorr", choices=["hamed-rao", "tfpw", "none"], default="hamed-rao",
                     help="serial-correlation handling for the non-seasonal test")
     ap.add_argument("--prewhiten", choices=["auto", "tfpw", "none"], help=argparse.SUPPRESS)  # v2.0 alias
-    ap.add_argument("--alpha", type=float, default=0.05)
+    ap.add_argument("--alpha", type=float, default=None)
     ap.add_argument("--min-n", type=int, default=8)
     a = ap.parse_args(argv)
+    alpha = a.alpha if a.alpha is not None else 0.05
+    autocorr = {"auto": "hamed-rao", "tfpw": "tfpw", "none": "none"}.get(a.prewhiten, a.autocorr)
     try:
+        if a.mode in ("wpi", "tsi", "hpi"):
+            with open(a.input, encoding="utf-8") as fh:
+                data = json.load(fh)
+            out = run_index_mode(a.mode, data)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0
+        if a.input.endswith(".json"):
+            with open(a.input, encoding="utf-8") as fh:
+                data = json.load(fh)
+            out = run_json_trend(data, alpha, autocorr, a.min_n)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0
         with open(a.input, newline="", encoding="utf-8-sig") as fh:
             reader = csv.DictReader(fh, delimiter=sniff_delimiter(a.input))
             for col in (a.time_col, a.value_col):
@@ -326,11 +540,10 @@ def main(argv=None):
                 else:
                     dropped += 1
         breaks = load_breaks(a.breaks, a.breaks_file, a.breaks_date_col)
-    except (ValueError, OSError) as exc:
+    except (ValueError, TypeError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
     recs.sort(key=lambda x: x[0])
-    autocorr = {"auto": "hamed-rao", "tfpw": "tfpw", "none": "none"}.get(a.prewhiten, a.autocorr)
     edges = [None] + breaks + [None]
     segments = []
     for lo, hi in zip(edges, edges[1:]):
@@ -343,7 +556,7 @@ def main(argv=None):
         times = [decimal_year(t) for t, _ in seg]
         values = [v for _, v in seg]
         months = [t.month for t, _ in seg]
-        res = test_segment(times, values, a.alpha, autocorr, a.seasonal == "month", months)
+        res = test_segment(times, values, alpha, autocorr, a.seasonal == "month", months)
         res.update(label)
         res["first"], res["last"] = seg[0][0].date().isoformat(), seg[-1][0].date().isoformat()
         segments.append(res)
