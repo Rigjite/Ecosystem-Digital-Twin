@@ -1,7 +1,7 @@
 # Ecosystem Digital Twin — Agent Skill
 
 [![tests](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml/badge.svg)](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml)
-![version 2.2](https://img.shields.io/badge/version-2.2-blue)
+![version 2.3](https://img.shields.io/badge/version-2.3-blue)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
@@ -20,7 +20,7 @@ touches the real system. It serves two uses, in this order: a **consulting
 product** for a client (a farm, a water-body manager, a conservation project,
 a municipality) and a **research instrument** for the operator's own science.
 
-Current version: **2.2** (2026-10-21). License: CC BY 4.0.
+Current version: **2.3** (2026-10-25). License: CC BY 4.0.
 
 ## Why this skill
 
@@ -152,14 +152,14 @@ threshold or fails to beat a naive baseline.
 | `examples/beira/` | Worked example on a real lake (Beira Lake, Colombo) from published data only: state vs thresholds, cross-check with independent studies, a source check, decision arithmetic for wetlands, value of a sludge analysis, a registered trial forecast, and the data gaps |
 | `scripts/` | The calculation toolkit above |
 | `tests/test_scripts.py`, `tests/check_package.py` | Unit and end-to-end tests of the scripts; the package lint |
-| `tests/TESTS.md` | Behavioral and automated tests (T1–T29), traceability table, run log |
+| `tests/TESTS.md` | Behavioral and automated tests (T1–T31), traceability table, run log |
 | `CHANGELOG.md`, `CITATION.cff` | Version history; citation metadata |
 
 </details>
 
 ## Status and evaluation
 
-- **Automated:** 48 unit and end-to-end tests plus the package lint run on
+- **Automated:** 60 unit and end-to-end tests plus the package lint run on
   every push (see the tests badge). Run them locally with
   `python3 -m unittest discover -s tests` and `python3 tests/check_package.py`.
 - **Evaluation history:** every round, its scores, and the defects found and

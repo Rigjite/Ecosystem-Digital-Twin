@@ -1,6 +1,32 @@
 # ecosystem-digital-twin — Changelog
 
-## Unreleased
+## v2.3 — 2026-10-25
+- SKILL.md rewritten to the v2.3 specification: strict mathematical
+  specifications (WPI, Carlson TSI, HPI with critical threshold 100,
+  Mann–Kendall with Hamed–Rao correction, SS_RMSE/NSE, VoI/EVSI), mandatory
+  deliverable templates (Object Passport with an explicit [НЕТ ДАННЫХ] gap
+  register, Circular-Economy Safety Gate), a JSON I/O-schema table for the
+  scripts, and multi-agent governance. The Object Passport uses the skill's
+  own 5-level maturity ladder (Prototype, Descriptive, Informative,
+  Predictive, Decision). The I/O table was verified against the actual
+  script interfaces and corrected where the draft described JSON contracts
+  the scripts do not have (see the verification report).
+- trend_test.py: WPI, Carlson TSI, and HPI functions plus `--mode
+  wpi/tsi/hpi` and a JSON trend input (`{"values", "timestamps", "alpha"}`)
+  with the spec output keys (`s_stat`, `var_s_raw`, `hamed_rao_factor`,
+  `z_corrected`, `p_value`, `theil_sen_slope`, `trend`). The existing
+  Hamed–Rao correction and CSV interface are unchanged.
+- skill_scores.py: `ss_rmse` = 1 − RMSE_model/RMSE_naive, an `ss_rmse`
+  output field, and the `admission_verdict` (ADMITTED if and only if
+  SS_RMSE > 0 on the declared hold-out; null for in-sample fits). The
+  existing MSE-ratio skill scores are kept and documented as differing from
+  SS_RMSE in value while sharing the > 0 boundary.
+- Editorial cleanup (2026-10-26, pre-release): the draft meta-comment above the I/O table is replaced by a direct instruction, and the two template headings are demoted to #### so they no longer compete with ### Template 1 / 2.
+- Verification fix (2026-10-25, independent check): Stage 7 wording corrected — forecast uncertainty is narrowed by assimilating observations, not by alert_bands.py (which recomputes the alert bands).
+- Package completeness: all 9 scripts kept (evidence_search.py and
+  uncertainty_budget.py included), tests/, examples/ (including Beira),
+  references/, assets/templates.md kept; orchestration stays at
+  references/orchestration.md.
 - examples/beira/: worked example on Beira Lake (Colombo) from published data
   only — state against the authors' thresholds, cross-check with three
   independent studies (2024–2026), a Gate-B-style check of the source, the
@@ -8,6 +34,13 @@
   information of a sludge analysis in relative units, a registered trial
   forecast, and the data gaps that keep the twin at maturity 2. Unit tests
   in tests/test_example_beira.py.
+- Tests: T30 (WPI/TSI/HPI + index modes + JSON trend input), T31 (SS_RMSE
+  and the admission boundary). Dry-run on the cascade case "water body →
+  subcritical sludge processing → agricultural field" (see
+  dry-run-cascade/dry-run-report.md).
+- Release note: the CITATION.cff DOI is still the v2.2 release DOI
+  (10.5281/zenodo.23608283); v2.3 gets a new Zenodo DOI at release, and the
+  README citation block is updated then.
 
 ## v2.2 — 2026-10-21
 - trend_test.py: the default correction for serial correlation is now the
