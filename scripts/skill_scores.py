@@ -16,6 +16,12 @@ Three subcommands, each reading one CSV and printing JSON:
               al. 2009) and the skill score 1 - MSE_model / MSE_baseline.
               Declared thresholds (--thresholds "NSE>=0.5,KGE>=0.3") and the
               rule "must beat every naive baseline" decide pass or fail.
+              Version 2.3 also reports SS_RMSE = 1 - RMSE_model / RMSE_naive
+              (against the persistence baseline, with SS_RMSE vs climatology
+              alongside) and an admission verdict: ADMITTED if and only if
+              SS_RMSE > 0 on the declared hold-out; in-sample fits get no
+              verdict. The MSE-ratio skill scores are kept unchanged — the
+              two metrics share the > 0 boundary but differ in value.
   events      binary observed vs forecast events: hits, misses, false alarms,
               correct negatives, POD, FAR (false-alarm ratio), CSI, frequency
               bias; optional lead-time distribution of hits.
@@ -134,6 +140,20 @@ def continuous_metrics(obs, sim):
     }
 
 
+def ss_rmse(rmse_model, rmse_naive):
+    """Benchmark skill score SS_RMSE = 1 - RMSE_model / RMSE_naive (v2.3).
+
+    Returns None when the naive baseline has zero error (the ratio is
+    undefined); callers treat that as "no verdict". Note this differs from
+    the MSE-ratio skill score 1 - MSE_model / MSE_baseline kept alongside
+    it: SS_RMSE > 0 and the MSE-ratio skill > 0 mark the same boundary (the
+    model beats the baseline), but their values differ.
+    """
+    if rmse_naive is None or rmse_naive <= 0:
+        return None
+    return 1 - rmse_model / rmse_naive
+
+
 THRESH = re.compile(r"^\s*(abs_)?([a-z_]+)\s*(>=|<=|>|<)\s*(-?[\d.]+)\s*$", re.I)
 
 
@@ -204,6 +224,10 @@ def cmd_continuous(a):
     mse_clim = mean([(o - b) ** 2 for o, b in zip(obs, climv)])
     m["skill_vs_persistence"] = 1 - m["mse"] / mse_pers if mse_pers > 0 else None
     m["skill_vs_climatology"] = 1 - m["mse"] / mse_clim if mse_clim > 0 else None
+    # SS_RMSE (v2.3): 1 - RMSE_model / RMSE_naive. Kept alongside the
+    # MSE-ratio skill scores above; same > 0 boundary, different value.
+    m["ss_rmse"] = ss_rmse(m["rmse"], math.sqrt(mse_pers))
+    m["ss_rmse_vs_climatology"] = ss_rmse(m["rmse"], math.sqrt(mse_clim))
     baseline_checks = [
         {"baseline": "persistence (" + ("previous observation" if a.persistence == "rolling"
                                          else "last training observation") + ")", "mse_baseline": mse_pers,
@@ -218,6 +242,19 @@ def cmd_continuous(a):
     if a.no_holdout:
         warnings.append("in-sample fit, not forecast skill: no hold-out was declared")
     failed = [t for t in thresholds if not t["pass"]] + [b for b in baseline_checks if not b["pass"]]
+    # Admission verdict (v2.3): ADMITTED if and only if SS_RMSE > 0 on the
+    # declared hold-out, against the persistence (inertial) baseline. The
+    # gate above additionally requires beating climatology; a model can
+    # therefore be ADMITTED by this verdict yet fail the gate. No verdict
+    # exists without out-of-sample data.
+    if a.no_holdout:
+        verdict = None
+        warnings.append("no admission verdict: in-sample fit is not out-of-sample validation")
+    elif m["ss_rmse"] is None:
+        verdict = None
+        warnings.append("no admission verdict: the naive baseline has zero error")
+    else:
+        verdict = "ADMITTED" if m["ss_rmse"] > 0 else "REJECTED_BELOW_BENCHMARK"
     unpaired = sum(1 for _, o, s in test if o is None or s is None)
     if unpaired:
         warnings.append(f"{unpaired} hold-out rows lack a valid observation or simulation and were not scored")
@@ -226,6 +263,7 @@ def cmd_continuous(a):
     out = {
         "mode": "continuous", "label": "in-sample fit, not forecast skill" if a.no_holdout else "hold-out skill",
         "train_end": a.train_end, "n_train_obs": len(train_obs), "metrics": m,
+        "ss_rmse": m["ss_rmse"], "admission_verdict": verdict,
         "baselines": baseline_checks, "thresholds": thresholds,
         "gate": "fail" if failed else ("pass" if thresholds else "pass (baselines only; no thresholds declared)"),
         "warnings": warnings,
