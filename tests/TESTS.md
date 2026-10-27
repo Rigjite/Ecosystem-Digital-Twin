@@ -1,4 +1,4 @@
-# ecosystem-digital-twin — saved test inputs (v2.3)
+# ecosystem-digital-twin — saved test inputs (v2.7)
 
 Run these after any change to the package. Automated checks first, from the
 skill root:
@@ -167,6 +167,251 @@ sharing its > 0 boundary; the in-sample fit gets no verdict
 (`admission_verdict` null) with a warning.
 **Automated by:** `TestSSRMSE` (4 tests).
 
+## T32 — Forecast cadence and lead time (v2.4, automated)
+**Input:** `registry.py issue` with `--cadence seasonal --lead-time 90 --lead-time-unit days`; with `--cadence sometimes`; with `--lead-time 0`, `--lead-time -5`, and `--lead-time-unit weeks` without a `--lead-time`; with `--lead-time 48 --lead-time-unit hours` and with `--lead-time 3` (no unit); a registry record hand-written with an invalid `cadence` (valid hash) and one with a negative `lead_time` value (valid hash); a forecast issued with neither new field.
+**Expected:** the first issue records `cadence` "seasonal" and `lead_time` {"value": 90.0, "unit": "days"} and verifies; the invalid cadence is refused (exit 2); a zero or negative lead time is refused (exit 2); a unit without a value is refused (exit 2); `--lead-time 48 --lead-time-unit hours` records hours, and a `--lead-time` without a unit defaults to "days"; each hand-written invalid record fails `verify` (exit 3) at its line, naming the field; the record without the new fields carries `cadence` null and `lead_time` null and still verifies.
+**Automated by:** `TestRegistryCadenceLeadTime` (5 tests).
+
+## T33 — Data-onboarding checklist presence (v2.4, automated)
+**Input:** the package text itself: SKILL.md Stage 2 and Object Passport template; `assets/templates.md` §1 and §5.
+**Expected:** SKILL.md names the Phase 1 checklist with all five items (source and access date; licence; resolution and coverage; QC performed; gaps → [НЕТ ДАННЫХ]); the passport template carries the onboarding line; `assets/templates.md` §1 carries the per-dataset onboarding line and §5 carries the refresh-cadence and lead-time fields.
+**Automated by:** `TestOnboardingChecklist` (2 tests).
+
+## T34 — FAIR Signposting in the manifest (Round 1 of the v2.5 program, automated)
+**Input:** a build index with `doi` "10.5281/zenodo.23657185" and licence URL; the same index without `doi`; the same index with `doi` "doi.org/10.5281/zenodo.23657185" and bare licence "CC-BY-4.0".
+**Expected:** with a DOI, the crate's Root Dataset carries `identifier` "https://doi.org/10.5281/zenodo.23657185" and a `signposting` list of exactly `cite-as` (DOI URL), `describedby` (`ro-crate-metadata.json`, type `application/ld+json`), `license` (licence URL); without a DOI there is no `identifier` and no `cite-as` entry — nothing invented — while `describedby` and `license` remain; a bare DOI is normalized to the https://doi.org/ URL and a bare licence string yields no license link.
+**Automated by:** `TestSignposting` (3 tests).
+
+## T35 — Scenario taxonomy, scenario card, handover note (Round 1 of the v2.5 program, automated)
+**Input:** the package text itself: SKILL.md Stage 4 and Object Passport template; `references/scenarios.md`; `references/uncertainty-decision.md` §4; `assets/templates.md` §1 and §6.
+**Expected:** SKILL.md Stage 4 names the three scenario classes (Scenario 0 No-Action counterfactual, Planning, What-if intervention) and the rule that a scenario without a declared class is not scored; `references/scenarios.md` carries the taxonomy section; `references/uncertainty-decision.md` §4 still freezes the no-action baseline and points at the taxonomy as class 0; `assets/templates.md` §6 is the scenario card with the class field and §1 carries the handover line; SKILL.md Template 1 carries the handover line and the Companion Documents count was six forms at Round 1 (eight since Round 3).
+**Automated by:** `TestTaxonomyHandover` (2 tests).
+
+## T36 — Recalibration trigger (Round 2 of the v2.5 program, automated)
+**Input:** `trend_test.py --mode drift --baseline <calibration>` on a new batch: a level-shifted batch (mean 14 against a calibration mean 10, sd ~1); a stable batch (mean 10); a rising batch (8 → 12, same mean as the calibration); a stable batch with one wild row (50.0) flagged `range` in a `qc_flag` column; a run without `--baseline` and a batch of 2 values.
+**Expected:** the shifted batch fires the trigger (`trigger` true, `action` "recalibrate", `drift_level` > 2, trend quiet); the stable batch stays quiet (`trigger` false, `action` "no action", `drift_level` < 0.5, trend quiet); the rising batch fires on trend alone (`level_fires` false, `trend_fires` true, Sen slope ≈ +5.3/yr outside the calibration slope's confidence interval); the flagged wild row is excluded (`rows_excluded_qc` 1) and the batch stays quiet; both input errors exit 2.
+**Automated by:** `TestDrift` (5 tests).
+
+## T37 — Continuous revalidation (Round 2 of the v2.5 program, automated)
+**Input:** `skill_scores.py revalidate <combined series> --train-end <original split> --previous-verdict ADMITTED --previous-ss-rmse 0.4`: a new batch the model still tracks (sim ≈ obs); the same setup with the model stuck at a constant in the new batch; a run without `--train-end`.
+**Expected:** the good batch keeps admission (exit 0, SS_RMSE > 0.9, verdict ADMITTED, `transition` "ADMITTED -> ADMITTED", `revoked` false, `maturity_action` "keep"); the degraded batch revokes it (exit 3, SS_RMSE < 0, verdict REJECTED_BELOW_BENCHMARK, `status` NOT_ADMITTED, `transition` "ADMITTED -> NOT_ADMITTED", `revoked` true, `maturity_action` "drop"); the run without `--train-end` exits 2.
+**Automated by:** `TestRevalidate` (3 tests).
+
+## T38 — Two tiers: Focus Application and What-if Scenario (Round 3 of the v2.5 program, automated)
+**Input:** the package text itself: `assets/templates.md` §7 and §8; SKILL.md Stage 6 and Companion Documents.
+**Expected:** `assets/templates.md` §7 is the Focus Application form (purpose, object and nodes, inputs with manifest IDs, outputs, builder, maturity targeted, update cadence) and §8 is the What-if Scenario form (decision, options compared with scenario IDs and classes, evidence per option, recommendation, what would change it, decision-maker and date), distinct from the §6 scenario card, which records a single scenario; SKILL.md Stage 6 names the two tiers (Focus Applications for builders, What-if Scenarios for decision-makers) and the Companion Documents count is eight forms.
+**Automated by:** `TestTwoTiers` (2 tests).
+
+## T39 — Explainability under pressure and multi-source fusion checklist (Round 3 of the v2.5 program, automated)
+**Input:** the package text itself: SKILL.md Stages 2 and 6 and Object Passport template; `references/uncertainty-decision.md` §1; `references/data-sources.md`; `assets/templates.md` §1 and §6.
+**Expected:** SKILL.md Stage 6 states the explainability rule (what the model used, what it did not use, confidence — no black-box verdicts) and the §6 scenario card carries an "Explanation" field; `references/uncertainty-decision.md` §1 carries the explainability paragraph; SKILL.md Stage 2 names the fusion checklist (coverage, resolution, alignment, cross-source consistency checks, gaps → [НЕТ ДАННЫХ]) as an extension of the onboarding checklist; `references/data-sources.md` carries the fusion section and a Contents list; the Object Passport template and `assets/templates.md` §1 carry the fusion line; Scenario 0 is unchanged (frozen baseline, class 0).
+**Automated by:** `TestExplainabilityFusion` (2 tests).
+
+## T40 — Prototype gallery: one working twin per task type (Round 4 of the v2.5 program, automated)
+**Input:** the five gallery entries under `examples/gallery/` and the gallery index `examples/gallery.md`.
+**Expected:** each `run.py` runs clean and prints a summary JSON whose expected outputs match the run: pond — TP trend increasing (p < 0.01), TSI composite 65.1 eutrophic, calibration gate pass, ADMITTED, SS_RMSE > 0.9, alerts red (3 amber, 1 red); river — no significant trend, max flow 625.8 m³/s, 9 days above amber, 4 above red, alerts red (1 red); field — moisture trend decreasing (p < 0.01), 26 days below amber, 3 below red, alerts red (1 red); air — no significant trend, 10 days above amber, 4 above red, alerts red (1 red); re-located Oct 26, 2026 from Ulan-Ude to Prince George, BC (new synthetic series, same question and bands; see the run log); biodiversity — 20 records, 18 species, 19 generalized to the 0.1° grid, 1 withheld (the *Emberiza* record), check gate pass, 0 violations, 18 species in 4 cells of 0.1°, at most 7 species in one cell; replaced Oct 26, 2026 (Gusinoye removed by the author's decision, Khubsugul lakeshore birds, Mongolia, synthetic records — the GBIF pull was blocked, HTTP 403; see the run log). `examples/gallery.md` lists all five entries with question, data provenance, and maturity; SKILL.md Companion Documents names the gallery.
+**Automated by:** `TestGallery` (6 tests).
+
+## T41 — Wetland gallery prototype: Everglades treatment wetland + marsh (first item of the v2.6 program, automated)
+**Input:** the wetland gallery entry under `examples/gallery/wetland/` (`nutrients.csv`, `level.csv`, `run.py`, `README.md`) and the gallery index `examples/gallery.md`.
+**Expected:** `run.py` runs clean and prints a summary JSON whose expected outputs match the run: 13 monthly TP rows, 0 QC flags; median removal 35.4%, mean 33.6% (document's stated mean 33.3%), Beira reference median 46%; removal trend no significant trend (p ≈ 0.23); level 121 daily rows, 0 QC flags, decreasing trend (p < 0.001, Sen −2.60 ft/yr), start 6.10 ft, min 5.26 ft, end 5.48 ft, 14 days below amber, 8 below red; outflow TP alerts red (1 amber, 2 red); level alerts red (2 amber, 2 red). `examples/gallery.md` lists the wetland entry with question, data provenance, and maturity; SKILL.md Companion Documents names the wetland.
+**Automated by:** `TestWetland` (2 tests).
+
+## T42 — Forest-fire gallery prototype: Prince Albert FMA fire seasons (second item of the v2.6 program, automated)
+**Input:** the forest-fire gallery entry under `examples/gallery/forest-fire/` (`fires.csv`, `run.py`, `README.md`) and the gallery index `examples/gallery.md`.
+**Expected:** `run.py` runs clean and prints a summary JSON whose expected outputs match the run: 49 monthly rows (Apr–Oct 2019–2025), 0 QC flags on both series; fire-count trend increasing (seasonal Kendall, p ≈ 0.011, Sen +0.17/month per year); burned-area trend increasing (p ≈ 0.0012, Sen +210 ha/month per year); biggest season 2025 (62 fires, 128,830 ha); 2019 season 101,400 ha and 2021 season 90,405 ha; 13 months above amber and 7 above red for counts, 17 and 5 for area; fires alerts red (4 amber, 1 red); area alerts red (4 amber, 1 red). `examples/gallery.md` lists the forest-fire entry with question, data provenance, and maturity; SKILL.md Companion Documents names the forest fire. The data are synthetic (deterministic formulas) with design anchors from the CIFFC 2023 national record, Saskatchewan 2023, and the Prince Albert FMA; the README documents the real-data check (FIRMS API key, 7-day NRT files, gridded products, no published annual series for the FMA).
+**Automated by:** `TestForestFire` (2 tests).
+
+## T43 — Forest-logging gallery prototype: British Columbia timber supply areas (third item of the v2.6 program, automated)
+**Input:** the forest-logging gallery entry under `examples/gallery/forest-logging/` (`logging.csv`, `run.py`, `README.md`) and the gallery index `examples/gallery.md`.
+**Expected:** `run.py` runs clean and prints a summary JSON whose expected outputs match the run: 11 annual rows (2015–2025), 0 QC flags on both series; logged-area trend increasing (p ≈ 5.2e-05, Sen +1,220 ha/yr); harvest-volume trend increasing (p ≈ 5.2e-05, Sen +272,750 m³/yr); biggest year 2025 (30,600 ha, 6,426,000 m³); Prince George is the largest district (47.0% of the 2015–2025 total; Quesnel 31.0%, Mackenzie 22.0%); 2015 total 17,900 ha / 3,436,800 m³; 2020 total below 2019 (slowdown dip); 4 years above amber and 2 above red for both area and volume; area alerts red (1 amber, 1 red); volume alerts red (1 amber, 1 red). `examples/gallery.md` lists the forest-logging entry with question, data provenance, and maturity; SKILL.md Companion Documents names the forest logging. The data are synthetic (deterministic formulas) with design anchors from BC harvest totals and the Prince George / Quesnel / Mackenzie AACs; the README documents the real-data check (GFW data API key, JavaScript-driven dashboard/map pages, gridded products, BC regional totals only).
+**Automated by:** `TestForestLogging` (2 tests).
+
+## T44 — Forest-carbon gallery prototype: Prince Albert FMA carbon stock (third forest entry, fourth item of the v2.6 program, automated)
+**Input:** the forest-carbon gallery entry under `examples/gallery/forest-carbon/` (`carbon.csv`, `run.py`, `README.md`) and the gallery index `examples/gallery.md`.
+**Expected:** `run.py` runs clean and prints a summary JSON whose expected outputs match the run: 11 annual rows (2015–2025), 0 QC flags; carbon-density trend increasing (p ≈ 2.6e-05, Sen +0.208 t C/ha/yr); net-change trend decreasing (p ≈ 0.039, Sen −0.017 t C/ha/yr); total stock 140.40 Mt C (2015) rising to 145.58 Mt C (2025), +5.18 Mt C (+3.7%); smallest growth year 2025 (+0.04 t C/ha/yr, density 53.92 t C/ha); 3 years below amber and 0 below red for net change; change alerts amber (1 amber, 0 red) — the amber episode 2024–2025 is ongoing. The density series rises through the window, so there is no low-density watch: the decision-relevant signal is the net change. `examples/gallery.md` lists the forest-carbon entry with question, data provenance, and maturity; SKILL.md Companion Documents names the forest carbon; the README states the carbon-credit boundary (not a carbon-credit methodology, no compliance with Verra, Gold Standard, or any other credit standard). The data are synthetic (deterministic formulas) with design anchors from UNEP boreal biomass, Alberta sequestration, and the forest-fire entry's burned areas; the README documents the real-data check (ESA CCI Biomass raster, GFW data API key, FIA multi-table harmonisation and US data, National Forest Inventory totals only).
+**Automated by:** `TestForestCarbon` (2 tests).
+
+## T45 — Impact chain (Round 1 of the v2.7 program, automated)
+**Input:** `references/scenarios.md` ("Impact chains" section) and the §6 scenario card in `assets/templates.md`.
+**Expected:** each impact chain is driver → exposed asset → impact, with the published function, its source, its applicable range, and its limits per link; a link with no published function goes to the [НЕТ ДАННЫХ] register and is never invented; a chain with a missing link reports the impact as unquantified, not as zero. The chain is arithmetic on the existing scripts' outputs — no new code.
+**Automated by:** `TestImpactChain` (1 test).
+
+## T46 — Event storyline (Round 1 of the v2.7 program, automated)
+**Input:** the scenario taxonomy in `references/scenarios.md` and the §6 scenario card in `assets/templates.md`.
+**Expected:** the taxonomy has four classes (0 No-Action counterfactual, Planning, What-if intervention, Storyline); a Storyline names an event from the object's own record, states the drivers changed and what is held fixed, and states the impact scored; the boundary vs replay is stated in both `references/scenarios.md` and `references/uncertainty-decision.md` §5 (storyline replays under changed drivers — a scenario; replay runs the pipeline on the event as it happened — a verification).
+**Automated by:** `TestStoryline` (1 test).
+
+## T47 — Historical-event replay (Round 1 of the v2.7 program, automated)
+**Input:** `scripts/registry.py replay` on a temp copy of the Beira registry, with a synthetic series whose alert start is computed by `scripts/alert_bands.py`.
+**Expected:** the replay record carries type "replay", event (named), event date, data cutoff, alert fired (yes/no), lead time in days (when the alert fired), method, inputs (manifest ids), model and version; the chain verifies (2 records); `score` ignores replay records (no forecast rows for them); the real Beira registry still verifies with 1 record. Refused (exit 2): data cutoff after the event date, an alert that fired with no lead time, a miss claiming a lead time, a duplicate replay id.
+**Automated by:** `TestReplay` (3 tests).
+
+## T48 — Stochastic scenario generator (Round 1 of the v2.7 program, automated)
+**Input:** `scripts/scenario_generate.py` on a small driver series.
+**Expected:** the fitted mean, sample SD and lag-1 autocorrelation match hand values (mean 11.6, SD ≈ 1.1402, rho ≈ −0.2231 for [10, 12, 11, 13, 12]); the same seed produces a byte-identical CSV and a different seed produces different draws; the output has the input's length and N+1 columns; the first draw of scenario 1 pins the RNG stream (mean + SD × gauss). With `--watch`, the summary reports the breach share in [0,1] (0 for an unreachable band, 1 for a band every value crosses). Every generated value is labelled a scenario draw, never a measurement.
+**Automated by:** `TestScenarioGenerate` (5 tests).
+
+## T49 — Hazard quotient / hazard index (Round 1 of the v2.7 program, automated)
+**Input:** `scripts/trend_test.py --mode hq` on a JSON `{"stressors": [...]}` list.
+**Expected:** HQ = exposure / reference per stressor; HI = the sum, split acute/chronic; 1 is the safety line. The Bychkov fire-smoke acute triple (suspended solids 11.3, formaldehyde 1.4, carbon monoxide 1.2) gives HI acute 13.9, unsafe; a safe case (PM2.5 0.4 + NO2 0.5) gives HI 0.9, not unsafe. Refused (exit 2): empty stressor list, reference ≤ 0, negative exposure, unknown duration, missing reference. `references/indicators.md` §6 documents HQ/HI beside HPI and states the honest note (same quotient family as HPI, but HPI covers only metals in water on a 100-scale).
+**Automated by:** `TestHazardQuotientIndex` (5 tests).
+
+## T50 — Covariate-aware alerts (Round 1 of the v2.7 program, automated)
+**Input:** `scripts/alert_bands.py --explained-by driver.csv --driver-amber ">=25"` on a main series with a sustained breach and a driver series.
+**Expected:** a breach overlapping a sustained driver episode is logged in `explained_breaches` (with the driver episode that explains it) and does not alert, does not set the status, and does not count for `--fail-on`; a breach with no driver episode alerts; a brief driver spike explains nothing. Refused (exit 2): `--explained-by` without `--driver-amber`, missing driver file, missing driver column. `references/indicators.md` §20 documents the rule; the §6 scenario card carries an Alerts field naming the driver and its bands.
+**Automated by:** `TestCovariateAwareAlerts` (6 tests).
+
+## T51 — Alert trial (Round 1 of the v2.7 program, automated)
+**Input:** `scripts/skill_scores.py alert-trial` on a CSV with one row per alert or critical event (kind, relevant).
+**Expected:** precision = relevant alerts / all alerts; miss rate = missed critical events / all critical events; alarm volume = the alert count. Verdict PASS at precision 0.9 with zero missed criticals (the Wessex-shape trial: 9 relevant of 10 alerts, 2 critical events both alerted); FAIL (exit 3) when precision is below the minimum, when a critical event is missed, or when the alarm count exceeds `--max-alarms`; FAIL when critical events are present but no alerts fired (the model stayed silent when it mattered). A window with no alerts AND no critical events is INCONCLUSIVE_QUIET_WINDOW (exit 0): nothing to score — it neither admits nor rejects, and admission waits for a synthetic stress-test or a historical extreme replay. Refused (exit 2): unknown kind, non-binary relevant, missing column. `references/uncertainty-decision.md` §3 states the trial is a separate gate from model admission — both must pass.
+**Automated by:** `TestAlertTrial` (9 tests).
+
+## T52 — Calibration plausibility gate (Round 1 of the v2.7 program, automated)
+**Input:** `scripts/skill_scores.py admit` on a JSON dossier `{"variables": [{"name", "ss_rmse", "primary" (optional)}], "parameters": [{"name", "value", "bounds": [lo, hi], "source"}]}`.
+**Expected:** ADMITTED (exit 0) when every PRIMARY target variable's SS_RMSE > 0 and every fitted parameter is inside its declared bounds; a secondary background variable below the benchmark does not block admission (buffered pH at SS_RMSE −0.05 with primaries passing → ADMITTED), and the output echoes each variable's `primary` flag. REJECTED (exit 3) naming the offending parameter when a parameter is outside its bounds even with SS_RMSE > 0 (growth rate 3.5 against bounds [0.2, 2.0] — Reynolds 2006), and when any PRIMARY variable's SS_RMSE ≤ 0. Backward compatibility: when no variable in the dossier carries a `primary` flag, every variable is primary (the pre-2.7 behaviour) — a background variable below the benchmark then blocks admission. Refused (exit 2): empty variables list, missing ss_rmse, inverted bounds, malformed JSON, missing file. `references/calibration-bounds.md` states the bounds come from the literature, not from the fit; SKILL.md Stage 3 states the two gates, both must pass.
+**Automated by:** `TestAdmit` (8 tests).
+
+## T53 — Virtual sensors (Round 2 of the v2.7 program, automated)
+**Input:** the Object Passport in `assets/templates.md` §1 and the "Client and sensor data" section of `references/data-sources.md`.
+**Expected:** the passport carries a "Virtual sensor" block (name, physical quantity, proxy source + deterministic formula, calibration station, skill score against it (SS_RMSE), validity window, QC and alert machinery as a physical sensor; when the proxy leaves calibration, its readings go to the [НЕТ ДАННЫХ] register — never silently used); `references/data-sources.md` lists satellite proxies as virtual-sensor sources (Sentinel-2 chlorophyll-a, Landsat water temperature; Gironde: 120 virtual sensors — a published formula and a skill score, no ML).
+**Automated by:** `TestVirtualSensor` (2 tests).
+
+## T54 — Deterministic drift / connectivity (Round 2 of the v2.7 program, automated)
+**Input:** `scripts/drift.py` on release-points, current-vector, and target-zone CSVs.
+**Expected:** displacement = (current + leeway × wind) × dt; 1° lat = 111,320 m, 1° lon = 111,320 × cos(lat) m evaluated at the particle's latitude each step; arrival = first step inside a target zone (a release point inside a zone arrives at 0 hours). Output JSON: per zone arrivals, connectivity (fraction of released particles arriving), median travel time (null when none arrives); per particle arrived zone and travel hours (null when it never arrives). Hand-verified: constant current u = 0.5 m/s east at 50°N = 0.025152° lon/hour; 0.1° takes 4 steps → connectivity 0.5 (2 release points, 1 arrives), median travel 4.0 h; with leeway 0.5 × wind-u 1.0 m/s the speed doubles → 2.0 h. Refused (exit 2): missing columns, non-numeric values, non-positive step or max hours, empty release or target tables.
+**Automated by:** `TestDriftModule` (5 tests).
+
+## T55 — Daily forecast bulletin (Round 2 of the v2.7 program, automated)
+**Input:** `scripts/forecast_bulletin.py` on a temp registry with a forecast entry (issued via `scripts/registry.py issue`) and an observations CSV.
+**Expected:** the bulletin is one page of Markdown with the forecast id and target, issued time, model, refresh cadence and usable warning lead time, the observed value today (latest observation, with date), the forecast value with interval and interval method, the watch status of the latest observation and of the forecast value (against `--amber`/`--red`, else "not stated (no bands given)"), and "This forecast will be scored on <horizon-end> against the <metric> metric, exactly as issued." Trial forecasts carry a "Trial forecast — no decision weight" line. The bulletin renders the registry; it changes no numbers. Refused (exit 2): missing file, unknown id, record not a forecast, missing columns, no observations, bad band spec, bands pointing different ways, red inside amber. The "Forecast bulletin" form exists in `assets/templates.md` §9.
+**Automated by:** `TestForecastBulletin` (4 tests).
+
+## T56 — Public status line (Round 2 of the v2.7 program, automated)
+**Input:** the "Public status line" form in `assets/templates.md` §10 and the Stage 6 rule in SKILL.md.
+**Expected:** the form is one paragraph in plain language — current state, what changed since the last status line, the maturity label, the [НЕТ ДАННЫХ] gaps — generated from the runner's summary JSON, for the client and the public, distinct from the handover note (for a successor builder, technical) and from RO-Crate (for machines). SKILL.md Stage 6 states that every twin ships one.
+**Automated by:** `TestPublicStatusLine` (2 tests).
+
+## T57 — One product per audience + dissemination register (Round 2 of the v2.7 program, automated)
+**Input:** the "Decision product" form in `assets/templates.md` §11 and the "Dissemination register" block in the §1 Object Passport.
+**Expected:** each decision product names its audience, its thresholds, its format, its channel, and its refresh cadence; the passport's dissemination register records who receives which product, by what channel. The templates are twelve fillable forms (§1 passport, §2 risk register, §3 TARP, §4 option card, §5 forecast registry entry, §6 scenario card, §7 focus application, §8 what-if scenario, §9 forecast bulletin, §10 public status line, §11 decision product, §12 mismatch register entry — added in Round 4 of the v2.7 program) — the `assets/templates.md` header and the SKILL.md Companion Documents line both say twelve.
+**Automated by:** `TestDecisionProduct` (3 tests).
+
+## T58 — Asset-relative safety margin (Round 2 of the v2.7 program, automated)
+**Input:** `scripts/registry.py issue --clearance "asset:threshold,..."` on a quantity forecast (value 2.4 m), plus the clearance table in the §1 Object Passport and the clearance line in the §5 forecast registry entry.
+**Expected:** the record carries per-asset clearance (threshold − forecast value): pier 2.5 → 0.1, pump 1.8 → −0.6; the chain still verifies (1 record); a record without `--clearance` has no clearance field and still verifies. `validate_forecast_fields` rejects a clearance entry whose clearance does not equal threshold − value, a non-numeric threshold, an unnamed asset, or a non-list clearance. Refused (exit 2): a pair without a colon, a non-numeric threshold, an unnamed asset. The docs state the formula and the generalization (clearance of a pollutant below its limit, of a level below a spillway crest, of a temperature below a lethal threshold).
+**Automated by:** `TestAssetClearance` (5 tests).
+
+## T59 — User-class operational thresholds (Round 2 of the v2.7 program, automated)
+**Input:** `scripts/alert_bands.py --class-thresholds classes.csv` (CSV: class, limit) on a flood-depth series peaking at 0.40 m, plus the rule paragraph in `references/indicators.md` §20 and the onboarding line in `assets/templates.md` §1.
+**Expected:** the output gains a `class_thresholds` block: per class, the limit and whether the latest observed value and the episode peak are within it — at peak 0.40 m, car (0.30) no, ambulance (0.35) no, pickup (0.45) yes; when the latest value drops below the limit after the peak (latest 0.25, peak 0.40, car 0.30), latest_within is yes, peak_within is no, can_operate is no. Refused (exit 2): missing file, missing class or limit column, non-numeric limit, duplicate class. The docs state the rule, the Phase 1 onboarding line ("for each decision-maker, their operational limit in the same units as the indicator"), and the distinction from the per-asset clearance (clearance is an asset's margin; this is who can do what).
+**Automated by:** `TestUserClassThresholds` (4 tests).
+
+## T60 — Exposure inventory + exposed fraction (Round 2 of the v2.7 program, automated)
+**Input:** the "Exposure" block on the §6 scenario card in `assets/templates.md` and the scoring rule + subsection in `references/scenarios.md`.
+**Expected:** the card lists the exposed elements (people, assets, habitats, intakes, cages) and the exposed fraction per class (exposed ÷ total in the zone), computed by table arithmetic from the hazard extent and the exposure inventory; the scoring rule includes the exposed fraction; the subsection "Exposure inventory and exposed fraction" sits after "Impact chains" and states the boundary (the chain's Exposure link names who/what is in the hazard's path; the fraction quantifies it per class; a fraction with no inventory behind it is not a number, it is a guess, and goes to the [НЕТ ДАННЫХ] register) and the source (EDITO — Coastal Risk Projections, hazard × exposure × vulnerability, Flooded Fraction). The fraction is table arithmetic: four of five cages is 0.8.
+**Automated by:** `TestExposureInventory` (2 tests).
+
+## T61 — Hindcast reproduction gate (Round 3 of the v2.7 program, automated)
+**Input:** the "Reproduction check" field on the §6 scenario card in `assets/templates.md` and the "Hindcast reproduction gate" subsection in `references/scenarios.md`.
+**Expected:** the card records the historical window reproduced with the intervention switched off, the declared tolerance, the reproduced state vs observations, and the pass/fail result; a failed check means the scenario delta is reported as "unvalidated, direction only" — never as a number. The subsection states the rule (run the scenario model on the historical window with the intervention off; the tolerance is the indicator's alert-band width or the calibration SD, declared before the run) and the boundary against the replay protocol (the gate validates a scenario model; the replay verifies an alert — a passed gate never claims the alert fired, a successful replay never validates a scenario delta); the same boundary is stated in `references/uncertainty-decision.md` §5. SKILL.md Stage 4 states the gate.
+**Automated by:** `TestHindcastGate` (2 tests).
+
+## T62 — Skill-vs-lead-time curve (Round 3 of the v2.7 program, automated)
+**Input:** `scripts/skill_scores.py skill-horizon` on a CSV with one row per scored forecast pair (lead, obs, sim, naive — the naive column is the persistence/climatology baseline value for that pair, supplied by the caller from the same hold-out).
+**Expected:** per lead bin, SS_RMSE = 1 − RMSE_model / RMSE_naive; the skill horizon is the longest lead with SS_RMSE > 0 and every shorter lead also above zero. Hand-verified: lead 1 SS_RMSE 0.5 (model rmse 1.0, naive 2.0), lead 2 SS_RMSE −2.0 (model 3.0, naive 1.0), lead 3 SS_RMSE 1.0 — the horizon is 1, and the lead-3 recovery is reported as a non-monotone recovery warning, not as horizon. No skill at the shortest lead gives a null horizon. A forecast is not trusted beyond its horizon. Refused (exit 2): missing columns, no usable rows. The "Skill horizon" field is on the §5 forecast registry entry form; `references/analytics-forecasting.md` §4 states the rule and the source (lake platforms — Meteolakes/COASTLINES report error as a function of forecast horizon).
+**Automated by:** `TestSkillHorizon` (4 tests).
+
+## T63 — Observation-nudged forecast (Round 3 of the v2.7 program, automated)
+**Input:** `scripts/skill_scores.py nudge` on a CSV of recent QC-passed observation/model pairs (time, obs, sim) with `--forecast` (the raw forecast value) and `--n` (default 5, declared in the Object Passport).
+**Expected:** nudged = raw forecast − mean(sim − obs) over the last N pairs. Hand-verified: residuals all +2 (sim runs 2 above obs) → raw 15 nudges to 13, correction −2.0. `--n 2` uses only the last 2 pairs; `--n` larger than the available pairs uses what exists and warns. The correction is recorded in the registry entry (`assets/templates.md` §5, "Nudge correction applied") and the N window in the passport (§1); the nudged forecast is scored per lead time by `skill-horizon` like any forecast. Refused (exit 2): fewer than 2 usable pairs, `--n` below 1. The rule is in `references/analytics-forecasting.md` §4 (the transferable principle of the Meteolakes ensemble Kalman filter, not the filter itself).
+**Automated by:** `TestNudge` (4 tests).
+
+## T64 — Phenomenon-oriented metrics (Round 3 of the v2.7 program, automated)
+**Input:** the "Phenomenon-oriented metrics" subsection in `references/analytics-forecasting.md` §4 and the "Phenomenon metrics" line on the §5 forecast registry entry form in `assets/templates.md`.
+**Expected:** the table gives 2–3 event metrics per phenomenon alongside the generic score — bloom (onset-date error, peak-magnitude error, duration error), flood (peak-level error, timing error, extent error), fire season (season-start error, peak-burned-area error, season-duration error), drought/low flow (onset-date error, minimum-level/flow error, duration error), heat/air stagnation (exceedance-days error, peak-concentration error). The admission rule stays SS_RMSE; the metrics show the client's skill on the events that matter. A metric that cannot be computed yet (too few events in the catalogue) is reported as [НЕТ ДАННЫХ] with the count, never as zero. No new script: the metrics are plain arithmetic on existing runner outputs.
+**Automated by:** `TestPhenomenonMetrics` (1 test).
+
+## T65 — Diversity indices (Round 3 of the v2.7 program, automated)
+**Input:** `scripts/diversity.py indices` on a counts CSV (species, count) with `--taxonomy` (species, genus, family, order, class, phylum).
+**Expected:** Shannon H′ = −Σ p ln p (natural log), Pielou J′ = H′ / ln(S), Clarke–Warwick taxonomic distinctness Δ+ = mean pairwise taxonomic distance (same genus 1, family 2, order 3, class 4, phylum 5, different phylum 6; a pair agrees at the deepest rank where both are known and equal). Hand-verified: counts 10, 5, 5 → H′ 1.0397, J′ = H′/ln 3; three species in one genus → Δ+ 1.0; two Aythya + one Anser → Δ+ 5/3; a record known only to class contributes at distance 4. On the Khubsugul counts (18 species, 20 records): H′ 2.8571, J′ 0.9885, Δ+ 3.5098; the unidentified record (Aves sp.) is named in the warnings. Species missing from the taxonomy are excluded from Δ+ and named. Refused (exit 2): a negative count, no species above zero. The biodiversity gallery runner now reports the indices (Shannon 2.8571, Δ+ 3.5098 in the summary) and the README states the counts are records per species (presence-only proxy, never abundance). The subsection is in `references/indicators.md` §11 with a cross-reference in §15.
+**Automated by:** `TestDiversity` (5 tests).
+
+## T66 — Plant functional type shares (Round 3 of the v2.7 program, automated)
+**Input:** `scripts/diversity.py pft` on a cover/count CSV (species, cover) with `--pft-table` (species, pft, pathway, source), demonstrated on the field gallery entry (`examples/gallery/field/pft_cover.csv` + `pft_table.csv`).
+**Expected:** shares from one quantity only (cover or counts, never mixed): the field entry gives grass 0.82, legume 0.10, forb 0.08, C3 1.00. Species missing from the PFT table are excluded from the shares and named (their cover stays in the total, so the shares do not sum to 1 — the unassigned share is stated, not hidden). The assignment table is published per site (TRY Plant Trait Database, Kattge et al. 2020, for the field entry); a trend needs repeat surveys, one survey reports shares only. The field runner reports the shares in its summary and the README states the cover values are synthetic (declared) and the assignments are the published TRY values. The subsection is in `references/indicators.md` §11.
+**Automated by:** `TestPFTShares` (3 tests).
+
+## T67 — Trait–environment matching (Round 3 of the v2.7 program, automated)
+**Input:** `scripts/trait_match.py` on a trait table CSV (taxon + trait columns, values numeric or "x" for indifferent) with `--conditions` (JSON: {trait: {mode, value, window?}}), demonstrated on the field gallery entry's `trait_table.csv` (Ellenberg indicator values T, F, R, N, S; the Ellenberg column in Tichý et al. 2023, Zenodo 7427088 — Germany source Ellenberg & Leuschner 2010, the revised edition of Ellenberg et al. 1991; verified 2026-10-26).
+**Expected:** a taxon fits only when EVERY stated condition is met. "at_least" (a tolerance: salinity, drought) requires the taxon's value to reach the site's value; "within" (an optimum: temperature, pH) requires it within the declared window around the site's value. A taxon marked indifferent ("x") for a trait is NOT excluded by a condition on that trait, and the output names it in `indifferent`. Hand-verified on the corrected field table (7 taxa): a saline site (S ≥ 8) fits only Salicornia europaea (Puccinellia distans S = 7); N ≥ 7 fits Trifolium pratense (indifferent N — it is not excluded), Lolium perenne, Taraxacum officinale, Elymus repens and Cirsium arvense, and excludes Salicornia europaea and Puccinellia distans (N = 4); T within 6 ± 1 fits all 7 taxa, two of them (Trifolium, Taraxacum) by indifference. Failing taxa are named with the failed condition and the values on both sides. Refused (exit 2): an unknown trait column, an unknown mode, a 'within' rule without a window, a trait cell that is neither a number nor "x". The table is the published Ellenberg values as transcribed in Tichý et al. 2023, verified 2026-10-26; Salicornia values are ssp. europaea. The subsection is in `references/indicators.md` §11 with a line in the §18 Agriculture quick set.
+**Automated by:** `TestTraitMatch` (5 tests).
+
+## T68 — Spread-informed sampling priority (Round 3 of the v2.7 program, automated)
+**Input:** `scripts/uncertainty_budget.py sampling-priority` on a targets CSV (target + model/naive, or model_a/model_b).
+**Expected:** disagreement = |a − b|; the ranking is descending by disagreement, ties broken by input order (deterministic, stated); the top target is named as `sample_next`. Hand-verified: A (10 vs 10 → 0), B (12 vs 20 → 8), C (15 vs 12 → 3) ranks B, C, A; sample_next is B. The old budget CLI (`uncertainty_budget.py ensemble.csv`) is unchanged — the dispatch is on the first argument only. Refused (exit 2): missing target column, neither value-column pair present, no usable targets. The rule is in `references/uncertainty-decision.md` §2 (value of information and adaptive sampling — the VoI home; §4 is the counterfactual twin, not the sampling rule) with a line on the §6 scenario card and a Stage 6 line in SKILL.md.
+**Automated by:** `TestSamplingPriority` (4 tests).
+
+## T69 — Sensitivity-first calibration (Round 4 of the v2.7 program, automated)
+**Input:** `scripts/sensitivity_screen.py` on a model file (callable `run(params) -> float`) + a params JSON (each parameter has a `perturb` fraction or `range` endpoints) + an optional `--baseline`.
+**Expected:** each parameter is perturbed one at a time (±perturb or the range endpoints), the output metric is recomputed, and the ranked table orders parameters by |metric change| descending, ties broken by input order (deterministic, stated). Hand-verified: run(p) = 2a + 0.1b + c, baseline 26.0 → ranking a (2.0) > c (0.5) > b (0.05). Refused (exit 2): no `run` callable, `run` returns a non-number, both `perturb` and `range` given, non-positive `perturb`. The honest limit is stated in the script docstring, SKILL.md Stage 3 and `assets/templates.md` §1: one-at-a-time misses interactions, unlike Sobol. Boundary vs the driver-perturbation table (T72) is stated in both docs: the screen perturbs MODEL parameters, the table perturbs INPUT drivers — different questions, different tables, never merged.
+**Automated by:** `TestSensitivityScreen` (4 tests).
+
+## T70 — Model ladder (Round 4 of the v2.7 program, automated)
+**Input:** the "Model ladder" subsection in SKILL.md Stage 3 + the Model ladder field in the Object Passport template (`assets/templates.md` §1).
+**Expected:** the fast model is admitted for SCREENING ONLY and must stay within a declared tolerance of the full model on the same hold-out, checked by `skill_scores.py`; a fast model outside its tolerance is not used for decisions. Governance + template, no computation.
+**Automated by:** `TestModelLadder` (2 tests).
+
+## T71 — Adaptation appraisal with equity + post-implementation follow-up (Round 4 of the v2.7 program, automated)
+**Input:** the extended scenario scoring in `references/scenarios.md` (equity column + follow-up date) + the §4 Option card fields (impact avoided, co-benefits, equity, follow-up check date + registry forecast ID).
+**Expected:** every adaptation option is scored on cost, impact avoided (from the Round 1 impact chain — the link is stated in the docs), co-benefits, and equity (who bears the cost, who gains); after implementation the twin re-scores the option against the predicted impact on a fixed date via `registry.py issue` with the predicted impact as the forecast value and the check date as the horizon end, scored on arrival — the same Brier-style discipline as BEIRA-F-001. Hand-verified via the registry: predicted impact 20, observed 24 → abs_error 4.0.
+**Automated by:** `TestAdaptationFollowUp` (2 tests).
+
+## T72 — Driver-perturbation table (Round 4 of the v2.7 program, automated)
+**Input:** the "Driver-perturbation table" subsection in `references/scenarios.md` + the "Sensitivity" block on the §8 What-if Scenario form (`assets/templates.md` §8).
+**Expected:** for each driver (rainfall, nutrient load, abstraction, land use) the table applies stated perturbations (+10%, +25%, −10%) and reports the indicator delta using the existing index functions — plain arithmetic, no new script. The boundary vs the sensitivity screen (T69) is stated in both docs: the screen perturbs MODEL parameters, the table perturbs INPUT drivers — different questions, different tables, never merged.
+**Automated by:** `TestDriverPerturbationTable` (1 test).
+
+## T73 — Mismatch register (Round 4 of the v2.7 program, automated)
+**Input:** `scripts/mismatch.py --observed obs.csv --modeled mod.csv` (cell, value; 0/1) + optional `--register reg.jsonl --id M-001 --cause "..." --confirm-measurement "..." --model "..." --model-version "..."`.
+**Expected:** extent = hits ÷ observed positives (null when there are no observed positives), misses (observed but not modeled), false alarms (modeled but not observed), hits; `--register` appends a JSONL entry (id, model, extent, misses, false_alarms, cause, confirm_measurement). Hand-verified: observed {A,B,C}, modeled {B,C,D} → extent 2/3, misses [A], false alarms [D]. Refused (exit 2): mismatched cell sets, non-binary values, empty tables, `--register` without the cause/confirm-measurement fields, duplicate id. The register is the learning log, not a gate (stated in `references/uncertainty-decision.md` §3 and `assets/templates.md` §12): the alert trial and the hindcast reproduction gate are pass/fail — a failed gate revokes admission — while the register explains *why* a validation was bad and turns the failure into the next data requirement. A failed validation with no register entry is a score with no lesson.
+**Automated by:** `TestMismatchRegister` (4 tests).
+
+## T74 — Promotion record (Round 4 of the v2.7 program, automated)
+**Input:** `scripts/registry.py promote --registry reg.jsonl --id PROM-001 --model ... --model-version ... --promoted-by "name (role)" --evidence "benchmark + hold-out score"`.
+**Expected:** the promotion is hash-chained like every record, status `operational`, with the signer, the registration clock, and the evidence; `registry.py score` ignores it (a promotion is governance, not a forecast); `verify` passes. Hand-verified: PROM-001 promoted by "R. Baldanova (lead modeler)" → operational; score reports 0 scored, chain ok. Refused (exit 2): duplicate id, missing `--promoted-by`, blank promoter, blank evidence. SKILL.md Stage 3 rule: a model is operational only after a recorded promotion; without one it is exploratory and its outputs are never presented as operational. The Object Passport template (§1) carries the promotion record fields.
+**Automated by:** `TestPromotionRecord` (3 tests).
+
+## T75 — Semantic mapping set (Round 4 of the v2.7 program, automated)
+**Input:** `examples/gallery/*/mappings.csv` (one per gallery dataset directory: file, local_field, standard_term, standard, justification) + `scripts/build_manifest.py` `mappings` in the build index.
+**Expected:** every header column of every gallery CSV is either mapped to a standard term (Darwin Core for biodiversity fields, Schema.org for generic measurement fields) or recorded as unmapped with a reason (no standard term exists, e.g. Ellenberg indicator values or plant functional types); every mapping carries a justification. The manifest builder emits one MappingSet File entity per mapping file (`about` the dataset it maps, `conformsTo` the SSSOM specification), listed in the Root Dataset's `hasPart`; validation refuses an unknown dataset id, a missing `path`, or a duplicate mapping id. Hand-verified: a pond mapping emits one MappingSet entity about `examples/gallery/pond/data.csv`, SSSOM-conformant, in `hasPart`. Cross-domain borrowings are stated in the justification (e.g. Darwin Core `eventDate` borrowed as the observation timestamp for a non-biodiversity series), never presented as native uses of the standard.
+**Automated by:** `TestSemanticMappings` (4 tests).
+
+## T76 — "Valid use / out of scope" field (Round 4 of the v2.7 program, automated)
+**Input:** the Object Passport template (`assets/templates.md` §1).
+**Expected:** the passport carries a "Valid use / out of scope" field: the decisions the twin is built for, and what the twin must NOT be used for. Template only, no code.
+**Automated by:** `TestValidUseField` (1 test).
+
+## T77 — Three-zone file ingestion (Laguna borrowing patch, automated)
+**Input:** the zones convention in SKILL.md Stage 2 + the file-zone field on the Phase 1 onboarding checklist (`assets/templates.md` §1) + the zones note in the `scripts/qc_series.py` docstring.
+**Expected:** incoming files move through three zones, never edited in place: `landing/` (as received, untouched), `trusted/` (QC-passed, the gate pass recorded), `refined/` (domain-converted and model-ready, the conversion recorded in the build manifest). A file leaves `landing/` only after its QC is recorded; a file enters `refined/` only after its conversion is recorded. The QC script flags rows — it never moves or edits files. Documentation only, no new script.
+**Automated by:** `TestThreeZoneIngestion` (2 tests).
+
+## T78 — Twin-to-twin notifications (Laguna borrowing patch, automated)
+**Input:** the notification step in SKILL.md Stage 7 + the "Linked nodes notified" field on the trigger–action–response plan (`assets/templates.md` §3).
+**Expected:** when an alert fires, the twin notifies its linked nodes (upstream and downstream twins); the notification is recorded on the TARP, not in the forecast registry; a notified node re-checks its own alert bands on the next batch. No new registry entry type — a notification is a communication act on the TARP, not a forecast record; adding it to the hash-chained registry would mix non-scorable communication into the forecast record for no audit gain. Documentation + template only, no code.
+**Automated by:** `TestTwinToTwinNotification` (2 tests).
+
+## T79 — Per-twin workspace layout (Laguna borrowing patch, automated)
+**Input:** the workspace layout in SKILL.md Stage 2 + the cross-reference from the build-manifest sentence in Stage 7.
+**Expected:** a twin's working folder follows one layout: `common/` (passport, shared data), `etl/` (ingestion + QC), `calibration/` (models + admission), `forecasts/` (bulletins + registry), `simulations/` (scenarios); the build manifest records which file sits where. Laguna's layout carries an `ml-training` folder — this skill has no ML-training step, so the layout adapts it away (the absence is pinned by test, not assumed). Documentation only, no code.
+**Automated by:** `TestTwinWorkspaceLayout` (2 tests).
+
+## T80 — Four named open-data ETL streams, field twin (Laguna borrowing patch, automated)
+**Input:** the "Field-twin open-data streams" subsection in `references/data-sources.md` §10 + the one-line cross-reference in the field gallery README (`examples/gallery/field/README.md`).
+**Expected:** the field twin is fed by four named open-data streams — daily weather (ERA5 by default, station truth where one exists), forecast weather (national meteo service / CAMS; never a substitute for observations in calibration), historical weather (ERA5 back to 1940 or the national archive; the hindcast window), NDVI (Sentinel-2, Landsat where Sentinel is missing, MODIS/VIIRS daily as the coarse context layer only). A stream that is unavailable is recorded as a gap in the [НЕТ ДАННЫХ] register, not silently replaced by another stream. The list lives in one place only (`references/data-sources.md` §10); the gallery README points at it and does not repeat it. Documentation only, no code.
+**Automated by:** `TestFieldTwinEtlStreams` (2 tests).
+
 ## Traceability
 
 | Test | Rule in SKILL.md | Automated |
@@ -194,8 +439,143 @@ sharing its > 0 boundary; the in-sample fit gets no verdict
 | T29 | Orchestration: multi-model runner protocol; Phase 4 no-LLM alert path | no |
 | T30 | Core Mathematical Specifications: WPI, Carlson TSI, HPI; index modes | yes |
 | T31 | Core Mathematical Specifications: SS_RMSE, admission verdict | yes |
+| T32 | Phase 4 standing verification; forecast registry (cadence, lead time) | yes |
+| T33 | Phase 1 data inventory; onboarding checklist | yes |
+| T34 | Phase 6 provenance package; FAIR Signposting | yes |
+| T35 | Phase 5 scenarios; Phase 0 passport handover | yes |
+| T36 | Stage 7 monitoring; recalibration trigger (drift) | yes |
+| T37 | Stage 3 admission; continuous revalidation | yes |
+| T38 | Stage 6 human decision; two tiers | yes |
+| T39 | Stage 6 explainability; Stage 2 fusion checklist | yes |
+| T40 | Companion Documents gallery; one working twin per task type | yes |
+| T41 | Companion Documents gallery; wetland prototype | yes |
+| T42 | Companion Documents gallery; forest-fire prototype | yes |
+| T43 | Companion Documents gallery; forest-logging prototype | yes |
+| T44 | Companion Documents gallery; forest-carbon prototype | yes |
+| T45 | Phase 5 scenarios: impact chain on the scenario card | yes |
+| T46 | Phase 5 scenarios: Storyline class in the taxonomy | yes |
+| T47 | Phase 4 standing verification; replay protocol in uncertainty-decision §5 | yes |
+| T48 | Phase 5 scenarios: seeded scenario generation | yes |
+| T49 | Core Mathematical Specifications: HQ/HI beside WPI/TSI/HPI | yes |
+| T50 | Phase 4 bands, alerts; covariate-aware alert rule (indicators §20) | yes |
+| T51 | Stage 3 admission; alert trial as a separate gate | yes |
+| T52 | Stage 3 admission; calibration plausibility gate (calibration-bounds) | yes |
+| T53 | Phase 1 data onboarding; virtual sensors in the Object Passport | yes |
+| T54 | Phase 3 transport; deterministic drift / connectivity module | yes |
+| T55 | Phase 4 standing verification; daily forecast bulletin | yes |
+| T56 | Stage 6 human decision; public status line per twin | yes |
+| T57 | Stage 6 human decision; one product per audience + dissemination register | yes |
+| T58 | Phase 4 standing verification; asset-relative safety margin in the registry | yes |
+| T59 | Phase 4 bands, alerts; user-class operational thresholds (indicators §20) | yes |
+| T60 | Phase 5 scenarios; exposure inventory + exposed fraction on the scenario card | yes |
+| T61 | Phase 5 scenarios; hindcast reproduction gate on the scenario card | yes |
+| T62 | Phase 3 forecast skill; skill-vs-lead-time curve + skill horizon | yes |
+| T63 | Phase 3 forecast skill; observation-nudged forecast | yes |
+| T64 | Phase 4 standing verification; phenomenon-oriented metrics in the verification record | yes |
+| T65 | Phase 2 indicator catalogue; diversity indices (Shannon, Pielou, taxonomic distinctness) | yes |
+| T66 | Phase 2 indicator catalogue; plant functional type shares | yes |
+| T67 | Phase 2 indicator catalogue; trait–environment matching | yes |
+| T68 | Phase 4 value of information; spread-informed sampling priority | yes |
+| T69 | Phase 3 calibration; sensitivity-first calibration (sensitivity screen) | yes |
+| T70 | Phase 3 calibration; model ladder (fast model screening only) | yes |
+| T71 | Phase 5 scenarios; adaptation appraisal (equity + post-implementation follow-up) | yes |
+| T72 | Phase 5 scenarios; driver-perturbation table | yes |
+| T73 | Phase 4 standing verification; mismatch register (learning log) | yes |
+| T74 | Phase 3 calibration; promotion record (exploratory → operational, signed) | yes |
+| T75 | Phase 1 data onboarding; semantic mapping sets (mappings.csv + RO-Crate MappingSet) | yes |
+| T76 | Phase 0 decision point; "Valid use / out of scope" field in the Object Passport | yes |
+| T77 | Phase 1 data onboarding; three-zone file ingestion (landing / trusted / refined) | yes |
+| T78 | Phase 4 & 7 linked nodes; twin-to-twin notification on the TARP | yes |
+| T79 | Phase 0–6 build; per-twin workspace layout (common / etl / calibration / forecasts / simulations) | yes |
+| T80 | Phase 1 data onboarding; four named open-data ETL streams for the field twin | yes |
 
 ## Run log
+- 2026-10-26 — v2.7 RELEASE (author's decision, 'Внести последнюю версию. Оформить профессионально', 23:05 EDT; staging only, prepared for the GitHub release): version assigned 2.4 → 2.7 in SKILL.md (YAML, title, Current version, Citation), CITATION.cff, README.md / README.ru.md (badge, Current version, Citation v2.7), tests/TESTS.md title, and the `scripts/evidence_search.py` User-Agent. Affiliation removed from CITATION.cff (author's decision: the latest version carries no affiliation); the CHANGELOG's historical v2.3 DOI record was reworded to carry no affiliation (the v2.7 CHANGELOG entry and this run-log entry record the removal itself). Definition corrected (author's decision): the skill IS a digital twin of ecosystems; the '(the consulting traffic light)' label removed from the Tier S / M / L header and 'consultant's method' corrected in the CHANGELOG. Professional README (EN + RU): 'Ecosystems covered' (nine domains, each with its gallery proof or real-data case), Keywords (14 GitHub topics), Author section, scripts table completed to all 16 scripts, stale references corrected (227 tests, T1–T80, roadmap and citation v2.7). CHANGELOG v2.7 release entry created (the one version at the end). Verification: 227 tests pass; strict lint passes from a fresh copy installed as `ecosystem-digital-twin/`; SKILL.md 477 lines. The CITATION.cff DOI is still the v2.3 record (10.5281/zenodo.23657185) until the Zenodo release mints a new one; a DOI-update PR follows. Nothing published: the GitHub release is a separate step.
+- 2026-10-26 — Laguna borrowing patch (author's decision, 'Сейчас', after the four prioritized items were presented; staging only, unreleased draft): four patterns borrowed from the Agricultural Digital Twin Platform (Laguna et al. 2025, Computers in Industry 172, 104347, DOI 10.1016/j.compind.2025.104347, MIT license) — PATTERNS ONLY, no code copied, none of its stack adopted (Docker / Temporal / MongoDB / Minio / MLflow / Go / SvelteKit), none of its ML approach (a Random Forest yield model validated on one eyeballed point from explicitly fake data — that would violate Rule #1). (1) Three-zone file ingestion in SKILL.md Stage 2 + a file-zone field on the Phase 1 onboarding checklist (`assets/templates.md` §1) + a zones note in the `scripts/qc_series.py` docstring: landing (as received, untouched) → trusted (QC-passed) → refined (domain-converted, model-ready); a file leaves landing only after its QC is recorded, enters refined only after its conversion is recorded. (2) Twin-to-twin notifications in SKILL.md Stage 7 + a "Linked nodes notified" field on the TARP (`assets/templates.md` §3): when an alert fires, the twin notifies its linked nodes; recorded on the TARP, not in the forecast registry; a notified node re-checks its own alert bands on the next batch. No new registry entry type — a notification is a communication act on the TARP, not a forecast record. (3) Per-twin workspace layout in SKILL.md Stage 2, cross-referenced from the Stage 7 build-manifest sentence: common / etl / calibration / forecasts / simulations; Laguna's ml-training folder is adapted away (this skill has no ML-training step, pinned by test). (4) Four named open-data ETL streams for the field twin in `references/data-sources.md` §10 (daily, forecast, historical weather, NDVI — ERA5, national meteo, Sentinel-2/Landsat, MODIS/VIIRS as context) with a one-line cross-reference from the field gallery README; the list lives in one place only. One test-expectation slip fixed during the build (capital "A file enters" vs the file's lowercase after a semicolon). Verification in staging: 227 tests pass (219 baseline + 8 new: T77 2, T78 2, T79 2, T80 2); strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Audit-fix patch, Variant 1 + Variant 2 (author's decision, 'Да, вариант 1+2: чинить текст и гейты'; staging only, unreleased draft): an external model's line-by-line audit of the v2.7 candidate was verified against the files by the author-side agent (21:10 EDT) and its findings fixed here. Text (Variant 1): the SKILL.md I/O table now describes all 16 scripts (rows added for `scripts/sensitivity_screen.py`, `scripts/forecast_bulletin.py`, `scripts/mismatch.py`, transcribed from the code); the Object Passport gains a 'Primary target variables' field and a per-indicator 'Drift threshold' field in both the SKILL.md Template 1 summary and `assets/templates.md` §1; Core Mathematical Specifications gains formulas 7–12 (HQ/HI, Shannon/Pielou/Delta+ with the natural-log base and the Clarke–Warwick rank weights as implemented, KGE, nudge, drift with leeway, the Stage 7 drift statistic) — the original 6 formulas untouched; a maturity cross-walk in Template 1 (Prototype = Conceptual Proposal = ladder level 1, exploratory; operational = ADMITTED + recorded promotion = Predictive/Decision; downgrade follows the existing Stage 3 rule) with a one-line cross-reference in Non-Negotiable 2; the trend_test.py preamble now lists all 6 modes; the Companion Documents header drops the stale '(retained from v2.2)'; the gallery names now match the `examples/gallery/` directories (forest-fire, forest-logging, forest-carbon, biodiversity); YAML last-reviewed 2026-10-25 → 2026-10-26. Gates (Variant 2): `skill_scores.py alert-trial` gains a third verdict INCONCLUSIVE_QUIET_WINDOW (exit 0) for a window with no alerts and no critical events — it neither admits nor rejects; critical events with no alerts still FAIL; `skill_scores.py admit` requires SS_RMSE > 0 only for PRIMARY target variables (optional `primary` flag per variable; when no variable carries the flag, every variable is primary — the pre-2.7 behaviour, backward compatible); the Tier S / M / L gradation ('Консалтинговый светофор') is stated in SKILL.md at the head of the 7-stage cycle and cross-references the ten-step Tier S path in `references/quick-start.md` (unchanged — it already was the Tier S path). Two audit points were corrected during verification and NOT applied as written: the auditor claimed the passport lacked the nudge-N and model-ladder tolerance fields (both are in `assets/templates.md` §1 — only drift_threshold was genuinely missing) and claimed no maturity downgrade rule existed (SKILL.md Stage 3 states it); the auditor's weighted score was 8.7, not 8.8 (0.25 × 34.8 = 8.70). The audit's source_ref-column requirement for reference tables and the 'Executive VoI & Sunk-Cost Summary' card were NOT implemented (separate decisions, offered later). Four gallery tests (`TestWetland`, `TestForestFire`, `TestForestLogging`, `TestForestCarbon`) asserted the old space-separated gallery names in SKILL.md and were updated to the hyphenated directory names; the gallery line was re-wrapped so the asserted substrings stay on one line. Verification in staging: 219 tests pass (214 baseline + 5 new: T51 +2, T52 +3; the T51 count is 9, not 7, and T52 is 8, not 5); strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Ellenberg trait-table correction (author's decision, 'Да, исправь таблицу до v2.7'; staging only, unreleased draft): the field gallery entry's `trait_table.csv` was checked against the published Ellenberg values (the Ellenberg column in Tichý et al. 2023, Zenodo 7427088) and did NOT match — only 14 of 40 values, largely reconstructed from memory. Replaced with the corrected table (7 taxa; "x" where Ellenberg is indifferent; Triticum aestivum removed — Ellenberg does not list cultivated wheat; Salicornia values are ssp. europaea). `scripts/trait_match.py` gained the indifferent rule: a taxon with "x" for a trait is not excluded by a condition on that trait, and the output names it in `indifferent`; a cell that is neither a number nor "x" is refused (exit 2). The three T67 expectation tests were rewritten to the corrected values (saline site S ≥ 8 fits only Salicornia europaea; N ≥ 7 fits Trifolium by indifference and excludes Salicornia and Puccinellia at N = 4; T within 6 ± 1 fits all 7 taxa, two by indifference) plus one new test pinning the indifferent rule and the malformed-cell refusal. Provenance lines fixed in `scripts/trait_match.py`, `references/indicators.md` §11 and the field-gallery README (exact source + verification date 2026-10-26); the field `mappings.csv` justifications aligned to the same citation. Verification in staging: 214 tests pass (213 baseline + 1 new; the T67 count is 5, not 4); strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Round 4 of the v2.7 program (second-wave borrowing, governance-and-depth, LAST round; staging only, unreleased draft): all 8 functions built in the approved order — Sensitivity-first calibration (Gironde), Model ladder (Digital Baikal), Adaptation appraisal + equity + M&E (DestinE), Driver-perturbation table (Southern Water), Mismatch register (Patos), Promotion record (Gironde), Semantic mapping set (BioDT), "Valid use / out of scope" field (BioDT). New scripts `scripts/sensitivity_screen.py`, `scripts/mismatch.py`; new subcommand `scripts/registry.py promote`; new `mappings` entity type in `scripts/build_manifest.py` (one MappingSet File per `mappings.csv`, SSSOM-conformant); new forms in `assets/templates.md` §12 (mismatch register entry) — twelve fillable forms, not eleven — and new fields in §1 (model ladder, promotion record, valid use / out of scope, semantic mapping) and §4 (adaptation appraisal) and §8 (driver-perturbation sensitivity block); new subsections in `references/scenarios.md` (adaptation appraisal + M&E, driver-perturbation table), `references/uncertainty-decision.md` §3 (mismatch register — the learning log, not a gate) and `references/data-sources.md` §6 (semantic mapping sets). Boundaries stated in the docs: sensitivity screen perturbs MODEL parameters, driver-perturbation table perturbs INPUT drivers (never merged); the mismatch register is the learning log, distinct from the pass/fail gates (alert trial, hindcast reproduction gate). Three older tests that asserted "eleven" fillable forms were updated to the new count, and the T57 entry updated. Two slips found and fixed during the build: a Round 3 test (`TestExposureInventory`) asserted the old scenario-scoring wording that F3 changed (updated with a Round 4 comment — the scoring rule genuinely changed), and a case slip in the T69/T70 assertions ("One-at-a-time" / "(the Model ladder)" capitalization). One docs edit failed on a wrong `old_text` and was retried with the correct text. Verification in staging: 213 tests pass (192 Round 3 baseline + 21 new); strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Round 3 of the v2.7 program (second-wave borrowing, forecast-quality + biodiversity; staging only, unreleased draft): all 8 functions built in the approved order — Hindcast reproduction gate (EDITO), Skill-vs-lead-time curve (lake platforms), Observation-nudged forecast (lake platforms), Phenomenon-oriented metrics (EDITO), Diversity indices (BioDT), Plant functional type shares (BioDT), Trait–environment matching (BioDT), Spread-informed sampling priority (lake platforms). New scripts `scripts/diversity.py`, `scripts/trait_match.py`; new subcommands `scripts/skill_scores.py skill-horizon`, `scripts/skill_scores.py nudge`, `scripts/uncertainty_budget.py sampling-priority`; new fields on the §5 forecast registry entry (skill horizon, nudge correction, phenomenon metrics) and the §6 scenario card (reproduction check, sampling priority); new subsections in `references/scenarios.md` (hindcast gate), `references/analytics-forecasting.md` §4 (skill horizon, nudge, phenomenon metrics), `references/indicators.md` §11 (diversity, PFT shares, trait matching) and §2 of `references/uncertainty-decision.md` (sampling priority — the VoI home, not §4). The biodiversity gallery runner now reports Shannon 2.8571 / Pielou 0.9885 / Δ+ 3.5098; the field gallery runner now reports PFT shares (grass 0.82, legume 0.10, forb 0.08, C3 1.00). Two slips found and fixed during the build: `trait_match.py` raised an uncaught KeyError (exit 1) for a 'within' rule without a window (now a ValueError, exit 2), and `uncertainty_budget.py`'s sampling-priority dispatch never fired because `main()` was called with `argv=None` (now normalized to sys.argv[1:]); a third was a test-expectation slip (float rendering 0.0, not 0). Verification in staging: 192 tests pass (165 Round 2 baseline + 27 new); strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Round 2 of the v2.7 program (second-wave borrowing, coverage-and-delivery; staging only, unreleased draft): all 8 functions built in the approved order — Virtual sensors (Gironde), Deterministic drift / connectivity (EDITO), Daily forecast bulletin (Gironde), Public status line (Southern Water), One product per audience + dissemination register (Patos), Asset-relative safety margin (Patos), User-class operational thresholds (Patos), Exposure inventory + exposed fraction (EDITO). New scripts `scripts/drift.py`, `scripts/forecast_bulletin.py`; new options `scripts/registry.py issue --clearance`, `scripts/alert_bands.py --class-thresholds`; new forms in `assets/templates.md` §9 (forecast bulletin), §10 (public status line), §11 (decision product) — eleven fillable forms, not eight; new rule paragraphs in `references/indicators.md` §20 (user-class thresholds) and subsection in `references/scenarios.md` (exposure inventory and exposed fraction). Two older tests that asserted "eight" fillable forms were updated to the new count. Verification in staging: 165 tests pass (138 Round 1 baseline + 27 new); strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Round 1 of the v2.7 program (second-wave borrowing, impacts-and-extremes + trust; staging only, unreleased draft): all 8 functions built in the approved order — Impact chain (DestinE), Event storyline (DestinE), Historical-event replay (Digital Baikal), Stochastic scenario generator (Digital Baikal), Hazard quotient / hazard index (Digital Baikal), Covariate-aware alerts (Southern Water), Alert trial (Southern Water), Calibration plausibility gate (lake platforms). New script `scripts/scenario_generate.py`; new subcommands `scripts/registry.py replay`, `scripts/skill_scores.py alert-trial`, `scripts/skill_scores.py admit`; new reference `references/calibration-bounds.md`; new `references/indicators.md` §20 (watch levels and alert rules). Two admission gates, both must pass (plausibility gate + alert trial); storyline vs replay boundary stated in both `references/scenarios.md` and `references/uncertainty-decision.md` §5. Verification in staging: 138 tests pass (105 baseline + 33 new); strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Biodiversity gallery entry REPLACED (author's decision, 'Замени другим биоразнообразие'): the removed Gusinoye lakeshore-birds entry is replaced by Khubsugul lakeshore birds, Mongolia (Lake Khubsugul / Khövsgöl, approx 51.0 N, 100.5 E) — synthetic records (deterministic formulas, 20 records, 18 species); the GBIF pull for real records was blocked (HTTP 403) and must not be retried or bypassed, so no real records are used and a real-data version is possible later via a live-browser GBIF pull. Sensitivity categories are the real IUCN Red List statuses of the lake's birds (Emberiza aureola CR withheld, Aythya ferina VU pre-rounded, the rest NT/LC generalized to 0.1°). The gallery now holds nine entries. Verification in staging: 105 tests pass; strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Biodiversity gallery entry REMOVED (author's decision, 'Убери гусиное'): the Gusinoye lakeshore-birds entry (real GBIF data, 20 records) is removed from the gallery instead of re-located — the GBIF pull for a replacement was blocked (HTTP 403) and the author chose removal. The gallery now holds eight entries; the GBIF sensitivity rules (generalize to 0.1°, withhold extreme records) stay in the skill (Non-Negotiable 3, `scripts/generalize_coords.py`). The entry is preserved in the v2.5 staging package as the program record. Verification in staging: 104 tests pass; strict lint passes from a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Gallery re-location (author's decision: no Russian landscape in the gallery):
+  forest-fire, forest-logging, forest-carbon, and air re-located to
+  non-Russian landscapes (fire and carbon: Prince Albert FMA,
+  Saskatchewan; logging: British Columbia timber supply areas Prince
+  George / Quesnel / Mackenzie; air: Prince George, BC winter PM2.5),
+  with new deterministic data, new published anchors, new READMEs, and
+  updated T40/T42/T43/T44. The
+  biodiversity entry (Gusinoye, real GBIF data) is NOT yet re-located:
+  the GBIF occurrence-search API returned HTTP 403 from this
+  environment and the request must not be retried or bypassed, so the
+  new pull is pending a live-browser fetch. Verification in staging:
+  105 tests pass; strict lint passes from a copy installed as
+  `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Forest-carbon gallery prototype (third forest entry, fourth item of the v2.6 program; staging only, unreleased draft):
+  Prince Albert FMA carbon stock under `examples/gallery/forest-carbon/`
+  (synthetic annual carbon density, 2015–2025; design anchors from
+  UNEP boreal biomass, Alberta sequestration, and the forest-fire
+  entry's burned areas; the README states the carbon-credit boundary —
+  not a carbon-credit methodology, no compliance with any credit
+  standard), index row in `examples/gallery.md`, SKILL.md Companion
+  Documents names the forest carbon. Verification in staging: 105 tests
+  pass (103 baseline + 2 new); strict lint passes from a copy installed
+  as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Forest-logging gallery prototype (third item of the v2.6 program; staging only, unreleased draft):
+  British Columbia timber supply areas (Prince George, Quesnel,
+  Mackenzie) under `examples/gallery/forest-logging/` (synthetic
+  annual logged area and harvest volume, 2015–2025; design anchors from
+  BC harvest totals and the Prince George / Quesnel / Mackenzie AACs),
+  index row in `examples/gallery.md`, SKILL.md Companion Documents names
+  the forest logging. Verification in staging: 103 tests pass (101
+  baseline + 2 new); strict lint passes from a copy installed as
+  `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Forest-fire gallery prototype (second item of the v2.6 program; staging only, unreleased draft):
+  Prince Albert FMA fire seasons under `examples/gallery/forest-fire/`
+  (synthetic monthly fire counts and burned area, Apr–Oct 2019–2025;
+  design anchors from the CIFFC 2023 national record, Saskatchewan
+  2023, and the Prince Albert FMA), index row in
+  `examples/gallery.md`, SKILL.md Companion Documents names the forest
+  fire. Verification in staging: 101 tests pass (99 baseline + 2 new);
+  strict lint passes from a copy installed as
+  `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Wetland gallery prototype (first item of the v2.6 program; staging only, unreleased draft):
+  Everglades treatment wetland + marsh under `examples/gallery/wetland/`
+  (SFWMD STA-1W monthly TP 2008–09; USGS EDEN 10 daily level
+  2025–26), index row in `examples/gallery.md`, SKILL.md Companion
+  Documents names the wetland. Verification in staging: 99 tests pass
+  (97 baseline + 2 new); strict lint passes from a copy installed as
+  `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Round 4 of the v2.5 program (borrowings; staging only, unreleased draft):
+  prototype gallery (T40): five working entries under `examples/gallery/`
+  (pond, river, field, air, biodiversity) plus the gallery index
+  `examples/gallery.md`; SKILL.md Companion Documents names the gallery.
+  Verification in staging: 97 tests pass (91 baseline + 6 new);
+  strict lint passes from a copy installed as `ecosystem-digital-twin/`;
+  BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Round 3 of the v2.5 program (borrowings; staging only, unreleased draft):
+  two tiers — Focus Application and What-if Scenario forms (T38);
+  explainability under pressure and multi-source fusion checklist (T39).
+  Verification in staging: 91 tests pass (87 baseline + 4 new);
+  strict lint passes from a copy installed as `ecosystem-digital-twin/`;
+  BEIRA-F-001 untouched, chain verifies.
+  recalibration trigger on drift (T36) and continuous revalidation
+  (T37). Verification in staging: 87 tests pass (79 baseline + 8 new);
+  strict lint passes from a copy installed as `ecosystem-digital-twin/`;
+  BEIRA-F-001 untouched, chain verifies.
+- 2026-10-26 — Round 1 of the v2.5 program (borrowings; staging only, unreleased draft):
+  FAIR Signposting over RO-Crate (T34), scenario taxonomy beside
+  Scenario 0 with scenario card (T35), handover note. Verification in
+  staging: 79 tests pass (74 baseline + 5 new); strict lint passes from
+  a copy installed as `ecosystem-digital-twin/`; BEIRA-F-001 untouched,
+  chain verifies.
+- 2026-10-26 — v2.4 (applied to the live skill on the author's approval):
+  lead-time register + forecast cadence (T32) and the Phase 1
+  data-onboarding checklist (T33). Verification (live skill): 74 tests
+  pass (67 baseline + 7 new); strict lint passes from a copy installed
+  as `ecosystem-digital-twin/`; BEIRA-F-001 untouched, chain verifies.
 - 2026-10-25 — v2.3: SKILL.md rewritten to the v2.3 specification (strict
   formulas, Object Passport + Safety Gate templates, I/O-schema table,
   governance); trend_test.py gains WPI/TSI/HPI + `--mode` + JSON trend

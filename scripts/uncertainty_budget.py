@@ -125,7 +125,79 @@ def budget(groups, interval):
     return out
 
 
+def sampling_priority(targets):
+    """Spread-informed sampling priority (Round 3 of the v2.7 program,
+    lake platforms). targets: list of (target, value_a, value_b) —
+    the admitted model's value and the naive benchmark's, or two
+    candidate models' values. Disagreement is |a - b|; the ranking is
+    descending by disagreement, ties broken by input order (deterministic,
+    stated). The top target is where the next sample goes: where the
+    models disagree most, a measurement decides between them. Returns
+    (ranked, sample_next)."""
+    ranked = sorted(((abs(a - b), i, t, a, b) for i, (t, a, b) in enumerate(targets)),
+                    key=lambda x: (-x[0], x[1]))
+    out = [{"rank": k + 1, "target": t, "disagreement": d,
+            "value_a": a, "value_b": b} for k, (d, _, t, a, b) in enumerate(ranked)]
+    return out, out[0]["target"] if out else None
+
+
+def cmd_sampling_priority(a):
+    """Rank the next sampling targets by model disagreement. Input CSV:
+    target + (model, naive) — the admitted model vs the naive benchmark —
+    or (model_a, model_b) — two candidate models. Plugs into the VoI/EVSI
+    machinery: it turns 'information has value' into 'sample here next'.
+    Exit 0; 2 on input error."""
+    with open(a.input, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh, delimiter=sniff_delimiter(a.input))
+        fields = reader.fieldnames or []
+        if "target" not in fields:
+            raise ValueError(f"column 'target' not found in {a.input}")
+        if "model" in fields and "naive" in fields:
+            cols, basis = ("model", "naive"), "admitted model vs naive benchmark"
+        elif "model_a" in fields and "model_b" in fields:
+            cols, basis = ("model_a", "model_b"), "candidate model A vs candidate model B"
+        else:
+            raise ValueError("need value columns 'model' + 'naive' or 'model_a' + 'model_b'")
+        targets, bad = [], 0
+        for r in reader:
+            name = (r.get("target") or "").strip()
+            if not name:
+                bad += 1
+                continue
+            try:
+                va, vb = to_number(r[cols[0]]), to_number(r[cols[1]])
+            except ValueError:
+                bad += 1
+                continue
+            targets.append((name, va, vb))
+    if not targets:
+        raise ValueError("no usable targets: need at least one target with two numeric values")
+    ranked, sample_next = sampling_priority(targets)
+    out = {"mode": "sampling-priority", "input": a.input, "basis": basis,
+           "ranked": ranked, "sample_next": sample_next,
+           "rule": "rank by |model - naive| (or |model A - model B|) descending; ties by input "
+                   "order; sample the top target next — where the models disagree most, a "
+                   "measurement decides between them",
+           "warnings": ([f"{bad} row(s) lack a target or numeric values and were skipped"]
+                        if bad else [])}
+    return out, False
+
+
 def main(argv=None):
+    argv = list(sys.argv[1:]) if argv is None else list(argv)
+    if argv and argv[0] == "sampling-priority":
+        ap = argparse.ArgumentParser(description="Rank the next sampling targets by model disagreement "
+                                                "(Round 3 of the v2.7 program, lake platforms).",
+                                     formatter_class=argparse.RawDescriptionHelpFormatter)
+        ap.add_argument("input", help="targets CSV: target + model/naive or model_a/model_b")
+        a = ap.parse_args(argv[1:])
+        try:
+            out, failed = cmd_sampling_priority(a)
+        except (ValueError, OSError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        print(json.dumps(out, ensure_ascii=False, indent=2))
+        return 3 if failed else 0
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("input")
     ap.add_argument("--output-col", default="output")

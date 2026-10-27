@@ -5,6 +5,18 @@ or collection, spatial and temporal coverage actually used, retrieval date,
 and the service's stable identifier or URL as of the build date.
 Verify current access terms and coverage at build time; services change.
 
+## Contents
+1. Satellite and Earth observation
+2. Atmosphere and climate
+3. Water
+4. Biodiversity
+5. Soil and land
+6. Interoperability standards
+7. Evidence sources (literature platforms)
+8. Client and sensor data (added after the open layer)
+9. Multi-source fusion
+10. Field-twin open-data streams
+
 ## Satellite and Earth observation
 
 | Source | Gives | Typical resolution / cadence | Used for |
@@ -76,6 +88,27 @@ in the passport:
 A twin that invents a private format where a standard exists creates
 conversion debt for its owner; deviations are recorded with their reason.
 
+### Semantic mapping sets (`mappings.csv`)
+
+Every dataset directory carries a small mapping file — one row per local
+field: `file, local_field, standard_term, standard, justification`.
+Each local field maps to a standard term (Darwin Core for biodiversity
+fields, Schema.org for generic measurement fields) with a justification
+for the mapping, SSSOM-style — or is explicitly recorded as unmapped,
+with the reason (no standard term exists for the field, e.g. Ellenberg
+indicator values or plant functional types). An unmapped field is a
+recorded fact, never a silently dropped column: a reader of the mapping
+can tell a considered non-mapping from a forgotten field. The mapping is
+checked at onboarding — one row in the Phase 1 checklist
+(`assets/templates.md` §1) — and the mapping files are RO-Crate
+entities in the provenance package (`scripts/build_manifest.py`
+`mappings`: one MappingSet entity per mapping file, `about` the dataset
+it maps, conforming to the SSSOM specification). Cross-domain borrowings
+are stated in the justification (e.g. Darwin Core `eventDate` borrowed
+as the observation timestamp for a non-biodiversity series), never
+presented as native uses of the standard. The gallery entries each
+carry a `mappings.csv` (see `examples/gallery/*/mappings.csv`).
+
 ## Evidence sources (literature platforms)
 
 Published evidence — prior studies, methods, thresholds, benchmark results —
@@ -91,7 +124,66 @@ never a source of measurements for the object itself.
 - In-situ sensors (water sondes, weather stations, soil probes): record model,
   calibration dates, and drift checks in the provenance log; uncalibrated
   sensor series are flagged, not silently trusted.
+- Satellite proxies as virtual sensors: a proxy (e.g. Sentinel-2
+  chlorophyll-a, Landsat water temperature) becomes a registered virtual
+  sensor in the passport (`assets/templates.md` §1) — name, quantity,
+  published formula, calibration station, SS_RMSE, validity window; it is
+  QC'd and alerted like a physical sensor, and its readings go to the
+  [НЕТ ДАННЫХ] register when it leaves calibration (Gironde: 120 virtual
+  sensors, simulated from satellite imagery; this is the deterministic
+  version — a published formula and a skill score, no ML).
 - Farm records: inputs, yields, operations diary — the driver history for agro
   twins.
 - Prior studies and EIA reports: mine them for baselines; verify methods
   before reusing numbers.
+
+## Multi-source fusion
+
+Heterogeneous sources (space, aerial, ground, water) are fused in one
+scheme — one object, one time base, one spatial reference — before any
+indicator is computed from them. Fusion is checked per source against the
+checklist below; it extends the Phase 1 onboarding checklist
+(`SKILL.md` Stage 2), it never replaces it:
+
+- Coverage: the source's spatial and temporal coverage actually used, and
+  what it does not cover.
+- Resolution: spatial and temporal resolution, against the decision's
+  needs — a coarse source is a context layer, never a local measurement.
+- Alignment: how the source aligns with the others — common grid, datum,
+  and time base; resampling and harmonization steps named, with their
+  method.
+- Cross-source consistency: checks performed between independent sources
+  (e.g. satellite surface against gauge level, reanalysis against station
+  truth, modelled soil against measured points) — agreement and
+  disagreement both recorded.
+- Gaps: what no source covers → the [НЕТ ДАННЫХ] register; a fused
+  product never hides a gap the sources do not fill.
+
+## Field-twin open-data streams
+
+A field twin is fed by four named open-data streams — the same four the
+platform literature uses for agricultural holdings (Laguna et al. 2025,
+"A platform to support the fast development of digital twins for
+agricultural holdings", Computers in Industry 172, 104347, DOI
+10.1016/j.compind.2025.104347 — patterns adapted, no code copied; see the
+CHANGELOG borrowing note) — each pulled on its own cadence and recorded
+in the Phase 1 onboarding checklist with source and access date:
+
+- **Daily weather** — observed temperature, precipitation, wind and
+  radiation for the current season; ERA5 reanalysis by default, a national
+  meteo station where one exists (station truth over reanalysis).
+- **Forecast weather** — the short-range forecast for the same variables
+  (national meteo service, or CAMS where available); used for irrigation
+  and spray windows, never as a substitute for observations in
+  calibration.
+- **Historical weather** — the multi-year series for the same variables
+  (ERA5 back to 1940, or the national archive); the baseline the current
+  season is compared against, and the hindcast window.
+- **NDVI** — vegetation state from Sentinel-2 (10–20 m, ~5 days) or
+  Landsat (30 m, 16 days) where Sentinel coverage is missing; MODIS/VIIRS
+  daily as the coarse context layer, never as the field measurement.
+
+A stream that is unavailable for the object is recorded as a gap in the
+[НЕТ ДАННЫХ] register, not silently replaced by another stream: forecast
+weather is not historical weather, and a modelled index is not an
+observation.

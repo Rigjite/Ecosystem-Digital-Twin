@@ -20,6 +20,12 @@ Summary-only diagnostics:
                   significant break must be explained in the bias and breaks
                   register before any trend is computed across it
 
+File zones: a series that passes this gate moves from the twin
+workspace's `landing/` zone (as received, never edited) to `trusted/`;
+domain-converted files ready for the model live in `refined/`. The zones
+are a file convention (SKILL.md Stage 2) — this script flags rows, it
+never moves or edits files.
+
 Usage:
   python3 qc_series.py do.csv --value-col do_mgl --min 0 --max 20 \
       --max-rate 3 --stuck-run 6 --max-gap-hours 3 --out do_qc.csv

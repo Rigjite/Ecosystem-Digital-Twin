@@ -1,0 +1,4 @@
+file,local_field,standard_term,standard,justification
+data.csv,time,dwc:eventDate,Darwin Core,"Observation timestamp; Darwin Core eventDate is the standard term for when an observation was recorded. For a non-biodiversity series it is borrowed as the observation timestamp — a cross-domain borrowing, stated here, not a Darwin Core-native use."
+data.csv,tp_ug_l,schema:value,Schema.org,"Total phosphorus, µg/L, carried as a Schema.org value."
+data.csv,chl_ug_l,schema:value,Schema.org,"Chlorophyll-a, µg/L, carried as a Schema.org value."

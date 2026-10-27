@@ -33,6 +33,29 @@ Usage:
       --amber "<5" --red "<2" --window-hours 6 --max-gap-hours 2 \
       --anchor "national standard for fishery waters" --human-check "profile with handheld sonde"
 
+A breach is logged as "explained" (not alerted) with --explained-by: when
+the driver series (rainfall, flow, temperature — from the same window) is
+itself beyond its own watch level in a sustained episode overlapping the
+breach, the breach goes to explained_breaches and does not alert, does not
+set the status, and does not count for --fail-on. Only unexplained breaches
+alert. The driver's own episode must be sustained for the same window — a
+brief driver spike explains nothing. (Round 1 of the v2.7 program,
+Southern Water: Stormharvester silences wet-weather alarms by learning
+"normal behaviour" — this is the deterministic version: a band check on a
+named driver, no ML.)
+
+A threshold table per decision-maker class is read with --class-thresholds:
+a CSV with columns class, limit (the operational limit in the indicator's
+units, same direction as the bands). The output gains a class_thresholds
+block: per class, the limit and whether the latest observed value and the
+episode peak are within it — can_operate is yes only when the class can
+operate now (latest value within its limit) and could operate at the event's
+worst moment (peak within its limit); when there was no alert episode the
+peak check is vacuous and only the latest value decides. (Round 2 of the
+v2.7 program, Patos: one forecast value maps to one verdict per
+decision-maker class — who can do what, distinct from the per-asset
+clearance in scripts/registry.py.)
+
 Exit 0 when evaluated (alerts or not); 3 when --fail-on red and a red alert
 exists; 2 on input error.
 
@@ -110,6 +133,31 @@ def parse_band(spec, name):
     return op, thr, test
 
 
+def find_episodes(pts, amber, red, window_hours, max_gap_hours, tolerate):
+    """Sustained episodes per band, plus the count of unsustained (spike)
+    runs at the amber band. Each episode is {"band", "start", "end",
+    "hours", "run"}. Amber episodes already covered by a red episode are
+    dropped. With red None, only the amber band is checked."""
+    out, spikes = [], 0
+    red_spans = []
+    bands = (("red", red), ("amber", amber)) if red is not None else (("amber", amber),)
+    for band, test in bands:
+        for run in episodes(pts, test, max_gap_hours, tolerate):
+            start, end = run[0][0], run[-1][0]
+            hours = (end - start).total_seconds() / 3600.0
+            if hours < window_hours or len(run) < 2:
+                if band == "amber":
+                    spikes += 1
+                continue
+            if band == "amber" and any(rs <= start and end <= re_ for rs, re_ in red_spans):
+                continue
+            if band == "red":
+                red_spans.append((start, end))
+            out.append({"band": band, "start": start, "end": end, "hours": hours, "run": run})
+    out.sort(key=lambda x: (x["start"], x["band"] != "red"))
+    return out, spikes
+
+
 def episodes(points, in_band, max_gap_h, tolerate=0):
     """Runs of in-band points, ended by a long gap or by more than `tolerate`
     consecutive out-of-band points. Points are (time, value, suspect)."""
@@ -155,6 +203,14 @@ def main(argv=None):
     ap.add_argument("--fail-on", choices=["none", "amber", "red"], default="none")
     ap.add_argument("--max-items", type=int, default=25, help="cap on listed alerts in the printed summary")
     ap.add_argument("--full-json", help="write the untruncated record here")
+    ap.add_argument("--explained-by", help="driver series CSV: a breach is logged as explained, not alerted, "
+                                           "when this series is itself beyond its own watch level in the same window")
+    ap.add_argument("--driver-col", default="value", help="value column of the driver series (default value)")
+    ap.add_argument("--driver-time-col", default="time", help="time column of the driver series (default time)")
+    ap.add_argument("--driver-amber", help="the driver's own amber band, e.g. '>=25'")
+    ap.add_argument("--driver-red", help="the driver's own red band, e.g. '>=50'")
+    ap.add_argument("--class-thresholds", help="per-class operational limits CSV: columns class, limit "
+                                               "(in the indicator's units, same direction as the bands)")
     a = ap.parse_args(argv)
     try:
         if not a.anchor.strip():
@@ -185,43 +241,140 @@ def main(argv=None):
         return 2
     pts.sort(key=lambda x: x[0])
     low_bad = a_op[0] == "<"
-    alerts, spikes = [], 0
     last_t = pts[-1][0] if pts else None
-    red_spans = []
-    for band, test in (("red", red), ("amber", amber)):
-        for run in episodes(pts, test, a.max_gap_hours, a.tolerate):
-            start, end = run[0][0], run[-1][0]
-            hours = (end - start).total_seconds() / 3600.0
-            if hours < a.window_hours or len(run) < 2:
-                if band == "amber":
-                    spikes += 1
+    found, spikes = find_episodes(pts, amber, red, a.window_hours, a.max_gap_hours, a.tolerate)
+    explained = []
+    if a.explained_by:
+        if not a.driver_amber:
+            print("error: --explained-by needs --driver-amber (the driver's own watch level)", file=sys.stderr)
+            return 2
+        try:
+            d_op, d_thr, d_amber = parse_band(a.driver_amber, "driver-amber")
+            d_red = None
+            if a.driver_red:
+                d_r_op, d_r_thr, d_red = parse_band(a.driver_red, "driver-red")
+                if (d_op[0] == "<") != (d_r_op[0] == "<"):
+                    raise ValueError("driver-amber and driver-red must point the same way (both '<' or both '>')")
+                if (d_op[0] == "<" and d_r_thr > d_thr) or (d_op[0] == ">" and d_r_thr < d_thr):
+                    raise ValueError("the driver red band must be beyond the driver amber band")
+            with open(a.explained_by, newline="", encoding="utf-8-sig") as fh:
+                reader = csv.DictReader(fh, delimiter=sniff_delimiter(a.explained_by))
+                for col in (a.driver_time_col, a.driver_col):
+                    if col not in (reader.fieldnames or []):
+                        raise ValueError(f"driver column '{col}' not found in {a.explained_by}")
+                d_has_qc = a.qc_col in (reader.fieldnames or [])
+                d_invalid = {f.strip() for f in a.ignore_flags.split(",") if f.strip()}
+                dpts = []
+                for r in reader:
+                    t, v = ftime(r[a.driver_time_col]), fnum(r[a.driver_col])
+                    flags = set() if not d_has_qc else {f for f in (r.get(a.qc_col) or "ok").split("|") if f != "ok"}
+                    if t is None or v is None or flags & d_invalid:
+                        continue
+                    dpts.append((t, v, sorted(flags)))
+        except (ValueError, OSError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+        dpts.sort(key=lambda x: x[0])
+        d_found, _ = find_episodes(dpts, d_amber, d_red, a.window_hours, a.max_gap_hours, a.tolerate)
+        kept = []
+        for ep in found:
+            expl = next((d for d in d_found
+                         if d["start"] <= ep["end"] and ep["start"] <= d["end"]), None)
+            if expl is None:
+                kept.append(ep)
                 continue
-            if band == "amber" and any(rs <= start and end <= re_ for rs, re_ in red_spans):
-                continue  # already reported at red
-            if band == "red":
-                red_spans.append((start, end))
-            peak = min(p[1] for p in run) if low_bad else max(p[1] for p in run)
-            suspect = sorted({f for p in run for f in p[2]})
-            alerts.append({
-                "indicator": a.indicator, "band": band, "observed_extreme": peak,
-                "threshold": f"{a_op if band == 'amber' else r_op}{a_thr if band == 'amber' else r_thr}",
-                "start": start.isoformat(), "end": "ongoing" if end == last_t else end.isoformat(),
-                "elapsed_hours": round(hours, 2), "observations": len(run),
-                "red_band_observations": sum(1 for p in run if red(p[1])),
-                "suspect_flags_inside": suspect,
-                "anchor": a.anchor, "recommended_check": a.human_check or "(state the human check)",
-                "likely_drivers": "(from the pattern memo and event catalogue)",
-            })
-    alerts.sort(key=lambda x: (x["start"], x["band"] != "red"))
+            explained.append((ep, expl))
+        found = kept
+    classes = []
+    if a.class_thresholds:
+        try:
+            with open(a.class_thresholds, newline="", encoding="utf-8-sig") as fh:
+                reader = csv.DictReader(fh, delimiter=sniff_delimiter(a.class_thresholds))
+                for col in ("class", "limit"):
+                    if col not in (reader.fieldnames or []):
+                        raise ValueError(f"class-threshold column '{col}' not found in {a.class_thresholds}")
+                seen = set()
+                for r in reader:
+                    name = (r.get("class") or "").strip()
+                    limit = fnum(r.get("limit"))
+                    if not name or limit is None:
+                        raise ValueError("each class-threshold row needs a named class and a finite limit")
+                    if name in seen:
+                        raise ValueError(f"duplicate class '{name}' in {a.class_thresholds}")
+                    seen.add(name)
+                    classes.append((name, limit))
+                if not classes:
+                    raise ValueError(f"no class thresholds in {a.class_thresholds}")
+        except (ValueError, OSError) as exc:
+            print(f"error: {exc}", file=sys.stderr)
+            return 2
+    alerts = []
+    for ep in found:
+        band, start, end, run, hours = ep["band"], ep["start"], ep["end"], ep["run"], ep["hours"]
+        peak = min(p[1] for p in run) if low_bad else max(p[1] for p in run)
+        suspect = sorted({f for p in run for f in p[2]})
+        alerts.append({
+            "indicator": a.indicator, "band": band, "observed_extreme": peak,
+            "threshold": f"{a_op if band == 'amber' else r_op}{a_thr if band == 'amber' else r_thr}",
+            "start": start.isoformat(), "end": "ongoing" if end == last_t else end.isoformat(),
+            "elapsed_hours": round(hours, 2), "observations": len(run),
+            "red_band_observations": sum(1 for p in run if red(p[1])),
+            "suspect_flags_inside": suspect,
+            "anchor": a.anchor, "recommended_check": a.human_check or "(state the human check)",
+            "likely_drivers": "(from the pattern memo and event catalogue)",
+        })
+    explained_breaches = []
+    for ep, dep in explained:
+        band, start, end, run, hours = ep["band"], ep["start"], ep["end"], ep["run"], ep["hours"]
+        peak = min(p[1] for p in run) if low_bad else max(p[1] for p in run)
+        explained_breaches.append({
+            "indicator": a.indicator, "band": band, "observed_extreme": peak,
+            "threshold": f"{a_op if band == 'amber' else r_op}{a_thr if band == 'amber' else r_thr}",
+            "start": start.isoformat(), "end": "ongoing" if end == last_t else end.isoformat(),
+            "elapsed_hours": round(hours, 2), "observations": len(run),
+            "explained_by": {"driver": a.explained_by, "driver_indicator": a.driver_col,
+                             "driver_band": dep["band"],
+                             "driver_threshold": f"{d_op if dep['band'] == 'amber' else d_r_op}"
+                                                 f"{d_thr if dep['band'] == 'amber' else d_r_thr}",
+                             "driver_start": dep["start"].isoformat(),
+                             "driver_end": dep["end"].isoformat()},
+            "anchor": a.anchor,
+            "rule": "breach explained by the driver; logged, not alerted",
+        })
     status = "red" if any(x["band"] == "red" for x in alerts) else ("amber" if alerts else "green")
+    rule = "a breach alerts only when sustained for the window; gaps end episodes; flagged values ignored"
+    if a.explained_by:
+        rule += "; a breach the driver explains is logged, not alerted"
+    class_thresholds = []
+    if classes:
+        latest = pts[-1][1] if pts else None
+        peak = None
+        if alerts:
+            peak = (max(x["observed_extreme"] for x in alerts) if not low_bad
+                    else min(x["observed_extreme"] for x in alerts))
+
+        def within(v, limit):
+            return None if v is None else (v <= limit if not low_bad else v >= limit)
+
+        for name, limit in classes:
+            lw, pw = within(latest, limit), within(peak, limit)
+            class_thresholds.append({
+                "class": name, "limit": limit,
+                "latest_value": latest, "latest_within": lw,
+                "peak_value": peak, "peak_within": pw,
+                "can_operate": (lw if pw is None else (lw and pw)) if lw is not None else None,
+            })
+        rule += "; class thresholds map the latest value and the episode peak to one verdict per decision-maker class"
     out = {"indicator": a.indicator, "observations_used": len(pts), "observations_ignored": ignored,
            "window_hours": a.window_hours, "max_gap_hours": a.max_gap_hours, "tolerate": a.tolerate,
-           "status": status, "alerts": alerts, "unsustained_breaches": spikes,
-           "rule": "a breach alerts only when sustained for the window; gaps end episodes; flagged values ignored"}
+           "status": status, "alerts": alerts, "explained_breaches": explained_breaches,
+           "class_thresholds": class_thresholds,
+           "unsustained_breaches": spikes, "rule": rule}
     if a.full_json:
         with open(a.full_json, "w", encoding="utf-8") as fh:
             json.dump(out, fh, ensure_ascii=False, indent=2)
     cap(out, "alerts", a.max_items)
+    cap(out, "explained_breaches", a.max_items)
     print(json.dumps(out, ensure_ascii=False, indent=2))
     if a.fail_on == "red" and status == "red":
         return 3

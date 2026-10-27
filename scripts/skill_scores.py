@@ -2,7 +2,8 @@
 """
 Calibration and verification scores (Phases 3-4, ecosystem-digital-twin skill).
 
-Three subcommands, each reading one CSV and printing JSON:
+Eight subcommands, each reading one CSV and printing JSON (the last two
+are the forecast-quality subcommands of Round 3 of the v2.7 program):
 
   continuous  observed vs simulated series. Scores the hold-out period only
               (rows after --train-end). Naive baselines are built without
@@ -28,16 +29,65 @@ Three subcommands, each reading one CSV and printing JSON:
   brier       probabilistic event forecasts: Brier score, Brier skill score
               against a climatological probability, reliability table and the
               Murphy (1973) decomposition reliability - resolution + uncertainty.
+  revalidate  continuous revalidation of an admitted model on a new batch:
+              the combined series (calibration + new batch) with the
+              ORIGINAL --train-end split; baselines are built from training
+              data only, so the new batch never trains its own baseline.
+              Reports the new SS_RMSE and verdict plus the status
+              transition against --previous-verdict: SS_RMSE <= 0 revokes
+              ADMITTED (status NOT_ADMITTED, maturity_action "drop").
+  alert-trial scores the ALERTS on a hold-out window — precision (relevant
+              alerts / all alerts), miss rate (missed critical events / all
+              critical events), alarm volume — with admission thresholds:
+              precision >= 0.9 (default --min-precision), zero missed
+              criticals (default --max-missed-criticals 0), alarm count
+              capped (optional --max-alarms). A window with no alerts and
+              no critical events is INCONCLUSIVE_QUIET_WINDOW, not a FAIL:
+              nothing to score, so it neither admits nor rejects, and
+              admission waits for a synthetic stress-test or a historical
+              extreme replay. Critical events with no alerts still FAIL —
+              the model stayed silent when it mattered. Distinct from
+              admission (SS_RMSE > 0), which scores the model, not the
+              alerts.
+  admit       calibration plausibility gate: admission requires (a) the model
+              beats the naive benchmark on every PRIMARY target variable
+              declared in the Object Passport (SS_RMSE > 0 for each;
+              secondary background variables are reported, not gated —
+              when no variable in the dossier carries a "primary" flag,
+              every variable is primary, the pre-2.7 behaviour) and (b)
+              every fitted parameter inside its declared physical bounds
+              (references/calibration-bounds.md). A parameter outside its
+              bounds is REJECTED even when SS_RMSE > 0. One of two
+              admission gates; the alert trial is the other — both must
+              pass.
+  skill_horizon
+              skill vs lead time: per lead bin, SS_RMSE of the forecast
+              against the naive baseline supplied per row; the skill
+              horizon is the longest lead at which the forecast still beats
+              persistence (SS_RMSE > 0) with every shorter lead also above
+              zero. A forecast is not trusted beyond its horizon.
+  nudge       observation-nudged forecast: shift a raw forecast value by
+              the mean model-minus-observed residual over the last N
+              QC-passed observation/model pairs (N declared in the Object
+              Passport); the correction is recorded in the registry entry
+              and the nudged forecast is scored per lead time by
+              skill_horizon like any forecast.
 
 Exit codes: 0 pass or no thresholds declared; 2 input error; 3 gate failed.
+For revalidate, exit 3 also means the admission was revoked.
 Scoring on the calibration data itself is refused unless --no-holdout is
 given, and the output is then labeled "in-sample fit, not forecast skill".
+Revalidation has no --no-holdout: a re-score without a hold-out is refused.
 
 Examples:
   python3 skill_scores.py continuous flows.csv --obs-col q_obs --sim-col q_sim \
       --train-end 2019-12-31 --thresholds "NSE>=0.5"
   python3 skill_scores.py events hindcast.csv --obs-col bloom --fcst-col warn --lead-col lead_h
   python3 skill_scores.py brier hindcast.csv --obs-col bloom --prob-col p --clim-prob 0.12
+  python3 skill_scores.py revalidate flows.csv --obs-col q_obs --sim-col q_sim \
+      --train-end 2019-12-31 --previous-verdict ADMITTED --previous-ss-rmse 0.42
+  python3 skill_scores.py alert-trial trial.csv --min-precision 0.9 --max-alarms 200
+  python3 skill_scores.py admit dossier.json
 """
 
 import argparse
@@ -271,6 +321,63 @@ def cmd_continuous(a):
     return out, bool(failed)
 
 
+def cmd_revalidate(a):
+    """Continuous revalidation (Round 2 of the v2.5 program).
+
+    Re-scores the admitted model on a new batch: the input is the
+    combined series (calibration + new batch) with the ORIGINAL
+    --train-end split, so the new batch is the hold-out and the naive
+    baselines are built from training data only. The scoring itself is
+    cmd_continuous, reused whole — this wrapper only adds the status
+    transition. SS_RMSE <= 0 revokes ADMITTED: the model loses its
+    forecasting status and the twin's maturity label drops to the
+    highest level the twin still meets, until a better model is
+    admitted. A re-score without a hold-out is refused by design:
+    there is no --no-holdout here.
+    """
+    if a.train_end is None:
+        raise ValueError("--train-end is required for revalidation: the original calibration split")
+    ns = argparse.Namespace(input=a.input, time_col=a.time_col, obs_col=a.obs_col,
+                            sim_col=a.sim_col, train_end=a.train_end, no_holdout=False,
+                            season=a.season, persistence=a.persistence, thresholds=a.thresholds)
+    out, failed = cmd_continuous(ns)
+    new_verdict = out.get("admission_verdict")
+    new_ss = out.get("ss_rmse")
+    prev = a.previous_verdict
+    if new_verdict == "ADMITTED":
+        status = "ADMITTED"
+    elif new_verdict == "REJECTED_BELOW_BENCHMARK":
+        status = "NOT_ADMITTED"
+    else:
+        status = None
+    revoked = (prev == "ADMITTED" and status == "NOT_ADMITTED")
+    transition = f"{prev} -> {status}" if prev and status else None
+    maturity_action = "drop" if revoked else "keep"
+    if revoked:
+        maturity_note = ("lower the maturity label to the highest level the twin still meets "
+                         "(forecasting levels require an ADMITTED model); record the drop in the "
+                         "Object Passport; re-admit only after a better model passes revalidation")
+    elif status == "NOT_ADMITTED":
+        maturity_note = "model was not previously admitted: nothing to revoke"
+    else:
+        maturity_note = "no change"
+    warnings = list(out.get("warnings", []))
+    if prev is None:
+        warnings.append("no previous verdict supplied: transition not stated; "
+                        "pass --previous-verdict to record it")
+    if a.previous_ss_rmse is not None and new_ss is not None:
+        warnings.append(f"SS_RMSE moved {a.previous_ss_rmse} -> {new_ss} on the new hold-out")
+    out["mode"] = "revalidate"
+    out["revalidation"] = {
+        "previous_verdict": prev, "previous_ss_rmse": a.previous_ss_rmse,
+        "new_ss_rmse": new_ss, "new_verdict": new_verdict,
+        "status": status, "transition": transition, "revoked": revoked,
+        "maturity_action": maturity_action, "maturity_note": maturity_note,
+    }
+    out["warnings"] = warnings
+    return out, bool(revoked or failed)
+
+
 def cmd_events(a):
     cols = [a.obs_col, a.fcst_col] + ([a.lead_col] if a.lead_col else [])
     rows = read_csv(a.input, cols)
@@ -370,6 +477,259 @@ def cmd_brier(a):
     return out, False
 
 
+def cmd_admit(a):
+    """Calibration plausibility gate (Round 1 of the v2.7 program, lake
+    platforms). A fit can be good and still be wrong: admission requires
+    (a) the model beats the naive benchmark on every PRIMARY target
+    variable declared in the Object Passport (SS_RMSE > 0 for each), and
+    (b) every fitted parameter inside its declared physical bounds
+    (references/calibration-bounds.md). Secondary background variables
+    (a buffered pH, a flat background index) are reported, not gated:
+    a model is not blocked by one flat curve it was never built to
+    predict. Each variable may carry a "primary" flag (true/false); when
+    no variable in the dossier carries the flag at all, every variable
+    is primary — the pre-2.7 behaviour, kept for backward
+    compatibility. A parameter outside its bounds is REJECTED even when
+    SS_RMSE > 0, and the verdict names the offending parameter or
+    PRIMARY variable. Input is a JSON dossier: {"variables": [{"name",
+    "ss_rmse", "primary": true}], "parameters": [{"name", "value",
+    "bounds": [lo, hi], "source"}]}. This is one of two admission
+    gates; the alert trial (alert-trial) is the other, on alert quality —
+    both must pass."""
+    with open(a.dossier, encoding="utf-8") as fh:
+        data = json.load(fh)
+    variables = data.get("variables")
+    parameters = data.get("parameters")
+    if not isinstance(variables, list) or not variables:
+        raise ValueError("the dossier needs a non-empty 'variables' list")
+    if not isinstance(parameters, list):
+        raise ValueError("the dossier needs a 'parameters' list (possibly empty)")
+    any_primary_flag = any(isinstance(v, dict) and "primary" in v for v in variables)
+    failures = []
+    echoed = []
+    for v in variables:
+        try:
+            ss = float(v["ss_rmse"])
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(f"variable {v!r} needs a numeric 'ss_rmse'")
+        # A variable is primary when its flag says so; with no flag on any
+        # variable, every variable is primary (the pre-2.7 behaviour).
+        primary = v.get("primary") in (True, 1) if any_primary_flag else True
+        echoed.append({"name": v.get("name", "?"), "ss_rmse": ss, "primary": primary})
+        if primary and not (ss > 0):
+            failures.append(f"variable {v.get('name', '?')}: SS_RMSE {ss} does not beat "
+                            "the naive benchmark (> 0)")
+    for p in parameters:
+        try:
+            value = float(p["value"])
+            lo, hi = float(p["bounds"][0]), float(p["bounds"][1])
+        except (KeyError, TypeError, ValueError, IndexError):
+            raise ValueError(f"parameter {p!r} needs a numeric 'value' and 'bounds' [lo, hi]")
+        if lo > hi:
+            raise ValueError(f"parameter {p.get('name', '?')}: bounds [{lo}, {hi}] are inverted")
+        if not (lo <= value <= hi):
+            failures.append(f"parameter {p.get('name', '?')}: {value} outside declared bounds "
+                            f"[{lo}, {hi}] (source: {p.get('source', 'not stated')})")
+    out = {"mode": "admit", "dossier": a.dossier,
+           "variables": echoed,
+           "parameters": [{"name": p.get("name", "?"), "value": float(p["value"]),
+                           "bounds": [float(p["bounds"][0]), float(p["bounds"][1])],
+                           "source": p.get("source")} for p in parameters],
+           "verdict": "REJECTED" if failures else "ADMITTED", "failures": failures,
+           "rule": "every PRIMARY target variable beats the naive benchmark (SS_RMSE > 0) "
+                   "AND every fitted parameter inside its declared bounds; secondary "
+                   "variables are reported, not gated; when no variable carries a "
+                   "'primary' flag, every variable is primary; both admission gates "
+                   "(this and the alert trial) must pass"}
+    return out, bool(failures)
+
+
+def skill_horizon_by_lead(pairs_by_lead):
+    """Skill vs lead time (Round 3 of the v2.7 program, lake platforms).
+
+    pairs_by_lead maps a lead value to a list of (obs, sim, naive) triples.
+    Per lead: SS_RMSE = 1 - RMSE_model / RMSE_naive. The skill horizon is
+    the longest lead at which the forecast still beats persistence
+    (SS_RMSE > 0) with every shorter lead also above zero: walk from the
+    shortest lead and stop at the first lead that does not beat the
+    baseline. A longer lead that beats the baseline after a failure is a
+    non-monotone recovery — noise, not skill — and is reported as a
+    warning, not as horizon. Returns (per_lead, horizon, warnings)."""
+    per_lead, warnings = [], []
+    for lead in sorted(pairs_by_lead):
+        pairs = pairs_by_lead[lead]
+        rmse_m = math.sqrt(mean([(s - o) ** 2 for o, s, _ in pairs]))
+        rmse_n = math.sqrt(mean([(b - o) ** 2 for o, _, b in pairs]))
+        ss = ss_rmse(rmse_m, rmse_n)
+        rec = {"lead": lead, "n": len(pairs), "rmse_model": rmse_m,
+               "rmse_naive": rmse_n, "ss_rmse": ss,
+               "beats_persistence": ss is not None and ss > 0}
+        if len(pairs) < 3:
+            warnings.append(f"lead {lead}: only {len(pairs)} pairs — SS_RMSE is fragile, report it with this count")
+        if ss is None:
+            warnings.append(f"lead {lead}: the naive baseline has zero error — no SS_RMSE")
+        per_lead.append(rec)
+    horizon = None
+    for rec in per_lead:
+        if rec["beats_persistence"]:
+            horizon = rec["lead"]
+        else:
+            break
+    if horizon is not None:
+        recovered = [r["lead"] for r in per_lead if r["lead"] > horizon and r["beats_persistence"]]
+        if recovered:
+            warnings.append(f"non-monotone recovery at lead(s) {recovered}: skill returns after dying — "
+                            "the horizon stops at the first failure, the recovery is not trusted")
+    return per_lead, horizon, warnings
+
+
+def cmd_skill_horizon(a):
+    """Skill-vs-lead-time curve (Round 3 of the v2.7 program, lake
+    platforms). Input CSV, one row per scored forecast pair: lead, obs,
+    sim, naive — the naive column is the persistence (or climatology)
+    baseline value for that pair, supplied by the caller from the same
+    hold-out. The twin's report states the skill horizon: the longest
+    lead where the forecast still beats persistence. A forecast is not
+    trusted beyond its horizon. Exit 0 (a report, not a gate); 2 on
+    input error."""
+    rows = read_csv(a.input, [a.lead_col, a.obs_col, a.sim_col, a.naive_col])
+    pairs_by_lead, skipped = {}, 0
+    for r in rows:
+        lead, o, s, b = (fnum(r[a.lead_col]), fnum(r[a.obs_col]),
+                         fnum(r[a.sim_col]), fnum(r[a.naive_col]))
+        if lead is None or o is None or s is None or b is None:
+            skipped += 1
+            continue
+        pairs_by_lead.setdefault(lead, []).append((o, s, b))
+    if not pairs_by_lead:
+        raise ValueError("no rows with a numeric lead, observation, simulation and naive value")
+    per_lead, horizon, warnings = skill_horizon_by_lead(pairs_by_lead)
+    if skipped:
+        warnings.append(f"{skipped} row(s) lack a valid lead, observation, simulation or naive value and were skipped")
+    out = {"mode": "skill_horizon", "input": a.input, "lead_unit": a.lead_unit,
+           "per_lead": per_lead, "skill_horizon": horizon,
+           "skill_horizon_unit": a.lead_unit if horizon is not None else None,
+           "rule": "the skill horizon is the longest lead with SS_RMSE > 0 and every shorter lead "
+                   "also above zero; a forecast is not trusted beyond its horizon",
+           "warnings": warnings}
+    return out, False
+
+
+def cmd_nudge(a):
+    """Observation-nudged forecast (Round 3 of the v2.7 program, lake
+    platforms). A deterministic bias correction, not a filter: shift a
+    raw forecast value by the mean model-minus-observed residual over
+    the last N QC-passed observation/model pairs (N declared in the
+    Object Passport, default 5). residual = sim - obs; nudged =
+    raw forecast - mean residual. The correction is recorded in the
+    registry entry so it can be checked, and the nudged forecast is
+    scored per lead time by skill_horizon like any forecast. Exit 0;
+    2 on input error."""
+    if a.n < 1:
+        raise ValueError("--n must be at least 1")
+    rows = read_csv(a.input, [a.time_col, a.obs_col, a.sim_col])
+    recs, bad = [], 0
+    for r in rows:
+        t, o, s = ftime(r[a.time_col]), fnum(r[a.obs_col]), fnum(r[a.sim_col])
+        if t is not None and o is not None and s is not None:
+            recs.append((t, o, s))
+        else:
+            bad += 1
+    recs.sort(key=lambda x: x[0])
+    if len(recs) < 2:
+        raise ValueError(f"only {len(recs)} usable observation/model pair(s); need at least 2")
+    used = recs[-a.n:]
+    residuals = [s - o for _, o, s in used]
+    mean_residual = mean(residuals)
+    warnings = []
+    if len(used) < a.n:
+        warnings.append(f"only {len(used)} of the declared {a.n} pairs available — the correction uses what exists")
+    if bad:
+        warnings.append(f"{bad} row(s) lack a valid time, observation or simulation and were skipped")
+    out = {"mode": "nudge", "input": a.input, "n_declared": a.n, "n_used": len(used),
+           "mean_residual": mean_residual, "raw_forecast": a.forecast,
+           "nudged_forecast": a.forecast - mean_residual,
+           "correction": -mean_residual,
+           "rule": "nudged = raw forecast - mean(sim - obs) over the last N QC-passed pairs; "
+                   "record the correction in the registry entry; score the nudged forecast per "
+                   "lead time by skill_horizon like any forecast",
+           "warnings": warnings}
+    return out, False
+
+
+def cmd_alert_trial(a):
+    """Score the alerts on a hold-out window (Round 1 of the v2.7 program,
+    Southern Water). This scores the ALERTS, not the model: a model can
+    beat its benchmark (SS_RMSE > 0) and still cry wolf, or stay silent
+    when it matters. Input CSV, one row per alert or critical event in the
+    hold-out window: kind ("alert" | "critical_event"), relevant (1/0).
+    For an alert, relevant 1 means a real event followed within the lead
+    window; 0 is a false positive. For a critical event, relevant 1 means
+    it was alerted in time; 0 means it was missed. Verdict PASS requires
+    precision >= --min-precision (default 0.9), zero missed criticals
+    (default --max-missed-criticals 0), and the alarm count within
+    --max-alarms when given. A window with no alerts and no critical
+    events is INCONCLUSIVE_QUIET_WINDOW (exit 0): nothing to score, so
+    it neither admits nor rejects — admission waits for a synthetic
+    stress-test or a historical extreme replay. Critical events with no
+    alerts still FAIL: the model stayed silent when it mattered."""
+    rows = read_csv(a.input, ["kind", "relevant"])
+    if not rows:
+        # A quiet window: no alerts and no critical events — nothing to
+        # score. This is a report, not a failure (exit 0).
+        return {"mode": "alert-trial", "input": a.input, "n_alerts": 0,
+                "n_relevant": 0, "precision": None,
+                "n_critical_events": 0, "n_missed_criticals": 0,
+                "miss_rate": None, "alarm_volume": 0,
+                "thresholds": {"min_precision": a.min_precision,
+                               "max_missed_criticals": a.max_missed_criticals,
+                               "max_alarms": a.max_alarms},
+                "verdict": "INCONCLUSIVE_QUIET_WINDOW", "failures": [],
+                "note": "no alerts and no critical events in the window: nothing to "
+                        "score. This neither admits nor rejects; admission waits for a "
+                        "synthetic stress-test or a historical extreme replay.",
+                "rule": "precision >= minimum, zero missed criticals, alarm volume within "
+                        "cap; a window with no alerts and no critical events is "
+                        "INCONCLUSIVE_QUIET_WINDOW"}, False
+    n_alerts = n_relevant = n_critical = n_missed = 0
+    for r in rows:
+        kind = (r.get("kind") or "").strip().lower()
+        if kind not in ("alert", "critical_event"):
+            raise ValueError(f"kind must be 'alert' or 'critical_event', got {r.get('kind')!r}")
+        rel = fbool(r.get("relevant"))
+        if rel is None:
+            raise ValueError(f"relevant must be 0/1 (or true/false), got {r.get('relevant')!r}")
+        if kind == "alert":
+            n_alerts += 1
+            n_relevant += rel
+        else:
+            n_critical += 1
+            n_missed += 1 - rel
+    precision = n_relevant / n_alerts if n_alerts else None
+    miss_rate = n_missed / n_critical if n_critical else None
+    failures = []
+    if precision is None:
+        failures.append("no alerts in the window: precision is undefined")
+    elif precision < a.min_precision:
+        failures.append(f"precision {precision:.3f} below the minimum {a.min_precision}")
+    if n_missed > a.max_missed_criticals:
+        failures.append(f"{n_missed} missed critical event(s), maximum {a.max_missed_criticals}")
+    if a.max_alarms is not None and n_alerts > a.max_alarms:
+        failures.append(f"alarm volume {n_alerts} above the cap {a.max_alarms}")
+    out = {"mode": "alert-trial", "input": a.input, "n_alerts": n_alerts,
+           "n_relevant": n_relevant, "precision": precision,
+           "n_critical_events": n_critical, "n_missed_criticals": n_missed,
+           "miss_rate": miss_rate, "alarm_volume": n_alerts,
+           "thresholds": {"min_precision": a.min_precision,
+                          "max_missed_criticals": a.max_missed_criticals,
+                          "max_alarms": a.max_alarms},
+           "verdict": "FAIL" if failures else "PASS", "failures": failures,
+           "rule": "precision >= minimum, zero missed criticals, alarm volume within cap; "
+                   "a window with no alerts and no critical events is INCONCLUSIVE_QUIET_WINDOW — "
+                   "it neither admits nor rejects"}
+    return out, bool(failures)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -395,9 +755,47 @@ def main(argv=None):
     b.add_argument("--prob-col", default="prob")
     b.add_argument("--clim-prob", type=float, help="climatological probability from the training period")
     b.add_argument("--bins", type=int, default=10)
+    r = sub.add_parser("revalidate", help="re-score an admitted model on a new batch")
+    r.add_argument("input", help="combined series: calibration + new batch")
+    r.add_argument("--time-col", default="time")
+    r.add_argument("--obs-col", default="obs")
+    r.add_argument("--sim-col", default="sim")
+    r.add_argument("--train-end", required=True, help="original calibration split (ISO date)")
+    r.add_argument("--season", choices=["month", "doy", "none"], default="month")
+    r.add_argument("--persistence", choices=["rolling", "fixed"], default="rolling")
+    r.add_argument("--thresholds", help='declared pass rules, e.g. "NSE>=0.5,abs_pbias<=25"')
+    r.add_argument("--previous-verdict", choices=["ADMITTED", "REJECTED_BELOW_BENCHMARK"],
+                   help="admission verdict from the previous validation round")
+    r.add_argument("--previous-ss-rmse", type=float, help="SS_RMSE from the previous validation round")
+    t = sub.add_parser("alert-trial", help="score the alerts on a hold-out window")
+    t.add_argument("input", help="one row per alert or critical event: kind, relevant")
+    t.add_argument("--min-precision", type=float, default=0.9)
+    t.add_argument("--max-missed-criticals", type=int, default=0)
+    t.add_argument("--max-alarms", type=int, help="optional cap on the alarm count")
+    d = sub.add_parser("admit", help="calibration plausibility gate: SS_RMSE > 0 on every primary target variable "
+                                     "and all parameters inside declared bounds")
+    d.add_argument("dossier", help="JSON dossier: {variables: [{name, ss_rmse, primary (optional)}], "
+                                   "parameters: [{name, value, bounds: [lo, hi], source}]}")
+    h = sub.add_parser("skill-horizon", help="skill vs lead time: per-lead SS_RMSE and the skill horizon")
+    h.add_argument("input", help="one row per scored forecast pair: lead, obs, sim, naive")
+    h.add_argument("--lead-col", default="lead")
+    h.add_argument("--obs-col", default="obs")
+    h.add_argument("--sim-col", default="sim")
+    h.add_argument("--naive-col", default="naive")
+    h.add_argument("--lead-unit", default="days", help="unit of the lead values (e.g. hours, days)")
+    n = sub.add_parser("nudge", help="observation-nudged forecast: shift a raw forecast by the mean recent residual")
+    n.add_argument("input", help="recent QC-passed observation/model pairs: time, obs, sim")
+    n.add_argument("--forecast", type=float, required=True, help="the raw forecast value to correct")
+    n.add_argument("--n", type=int, default=5, help="number of last pairs for the mean residual (declared in the passport)")
+    n.add_argument("--time-col", default="time")
+    n.add_argument("--obs-col", default="obs")
+    n.add_argument("--sim-col", default="sim")
     a = ap.parse_args(argv)
     try:
-        out, failed = {"continuous": cmd_continuous, "events": cmd_events, "brier": cmd_brier}[a.cmd](a)
+        out, failed = {"continuous": cmd_continuous, "events": cmd_events, "brier": cmd_brier,
+                       "revalidate": cmd_revalidate, "alert-trial": cmd_alert_trial,
+                       "admit": cmd_admit, "skill-horizon": cmd_skill_horizon,
+                       "nudge": cmd_nudge}[a.cmd](a)
     except (ValueError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

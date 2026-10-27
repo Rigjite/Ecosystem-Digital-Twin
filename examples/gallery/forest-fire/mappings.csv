@@ -1,0 +1,4 @@
+file,local_field,standard_term,standard,justification
+fires.csv,time,dwc:eventDate,Darwin Core,"Observation timestamp; Darwin Core eventDate is the standard term for when an observation was recorded. For a non-biodiversity series it is borrowed as the observation timestamp — a cross-domain borrowing, stated here, not a Darwin Core-native use."
+fires.csv,fires,schema:value,Schema.org,"Count of fires in the month, carried as a Schema.org value."
+fires.csv,burned_ha,schema:value,Schema.org,"Burned area, ha, carried as a Schema.org value."

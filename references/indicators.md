@@ -7,7 +7,8 @@ and eutrophication · 6 Contaminants · 7 Sediments · 8 Groundwater · 9 Soil a
 land · 10 Landscape and disturbance · 11 Flora · 12 Microalgae and
 phytoplankton · 13 Microbiology · 14 Invertebrates · 15 Fish and wildlife ·
 16 Ecosystem functions · 17 Pressures and management response · **18 Domain
-quick sets (start here)** · 19 Indicator metadata and quality requirements
+quick sets (start here)** · 19 Indicator metadata and quality requirements ·
+20 Watch levels and alert rules
 
 This is a catalogue, not a universal checklist. A twin selects indicators by
 the object's media, pressures, decisions, and available evidence. Including an
@@ -135,6 +136,29 @@ the detection limit and sampling date.
 | Sediment toxicity and whole-effluent toxicity tests | Integrated biological effect where chemistry alone is inconclusive | Conditional | Standard bioassay protocols |
 | Biomarkers and tissue burdens in sentinel species | Exposure and effect inside organisms | Research | Peer-reviewed protocol; ethics and permits for animal sampling |
 
+### Hazard quotient and hazard index (HQ/HI)
+
+**HQ = exposure / reference value** per stressor — the exposure divided
+by its regulatory or guideline reference (ПДК, WHO guideline, occupational
+limit, or a published screening value, stated on the term). **HI = the sum
+of the HQs**, split into acute and chronic; **1 is the safety line — above
+1 is unsafe**. The same quotient family as HPI, but HPI covers only metals
+in water on a 100-scale; HQ/HI covers any stressor — air, water, smoke,
+chemicals — on a 1-scale, with the acute/chronic split. Computed by
+`scripts/trend_test.py --mode hq` from a JSON `{"stressors": [...]}` list
+(name, exposure, reference, duration acute/chronic, target organ where
+known). A reference must be > 0 and an exposure >= 0; a stressor with no
+published reference goes to the [НЕТ ДАННЫХ] register, never to a guessed
+denominator. The published HI is often reported per target organ — the
+function sums by duration and keeps the target on each term, so a
+per-target HI is read off the terms.
+
+*Example — fire smoke, Baikal region (Bychkov & Fereferov 2022):* acute
+HQ 11.3 (suspended solids), 1.4 (formaldehyde), 1.2 (carbon monoxide) —
+HI acute 13.9, far above the safety line; chronic HI 12.7 (respiratory),
+6.3 (cardiovascular), 5.9 (mortality). Any single stressor above 1 already
+makes the exposure unsafe; the sum shows the combined burden.
+
 ## 7. Sediments and substrate
 
 | Indicator | What it tells | Tier | Typical anchor |
@@ -211,6 +235,69 @@ the detection limit and sampling date.
 | Rare plant community extent and condition | Habitat conservation priority | Conditional | Habitat classification and red lists of habitats where they exist |
 | Genetic diversity of target populations | Long-term viability for restoration/conservation breeding | Research | Population genetics protocol; permits and ethics |
 
+### Diversity indices
+
+Richness alone misleads: a site can keep its species count while losing
+its evenness and its taxonomic breadth. Report Shannon H′, Pielou
+evenness J′, and Clarke–Warwick taxonomic distinctness Δ+ together
+(`scripts/diversity.py indices` — natural logarithm throughout):
+
+- **Shannon H′ = −Σ p_i ln p_i** — diversity of the count distribution;
+  falls when one species dominates.
+- **Pielou J′ = H′ / ln(S)** — evenness, 0–1; 1 means every species is
+  equally abundant.
+- **Δ+ (taxonomic distinctness)** — mean taxonomic distance over all
+  pairs of species present, from the Linnaean hierarchy (same genus 1,
+  same family 2, same order 3, same class 4, same phylum 5, different
+  phylum 6). The stdlib-feasible cousin of BioDT's phylogenetic-diversity
+  prototype (Faith's PD needs a phylogeny; Δ+ needs only the taxonomic
+  tree the skill already uses via the GBIF backbone). A pair agrees at
+  the deepest rank where both taxa are known and equal; a rank unknown
+  for either cannot agree.
+
+Counts from presence-only records are records per species — a proxy,
+stated as such, never silently treated as abundance. Species missing
+from the taxonomy table are excluded from Δ+ and named. (Source: BioDT
+— Islam et al. 2026, npj Biodiversity 5:5; Clarke & Warwick 1998,
+taxonomic distinctness.)
+
+### Plant functional type shares
+
+Group the site's species into plant functional types (PFTs — grasses /
+forbs / legumes; C3 / C4; growth form) and track PFT shares and their
+trends instead of species lists alone (`scripts/diversity.py pft`).
+Shares come from one quantity only — cover or counts, never mixed — and
+the assignment table is published per site (literature / TRY Plant
+Trait Database, Kattge et al. 2020). A trend needs repeat surveys; one
+survey reports shares only. For farm and grassland clients, PFT shares
+are the management signal (grazing, mowing, fertilizer); a species list
+does not answer the management question. (Source: BioDT — the grassland
+prototype on GRASSMIND; the model itself does not transfer, the PFT
+concept does.)
+
+### Trait–environment matching
+
+Screen a taxon list against published environmental-tolerance tables
+(temperature, soil acidity, salinity, drought) and return which taxa fit
+the site's extremes (`scripts/trait_match.py`, fed by a trait table per
+object). A taxon fits when every stated tolerance is met: an "at-least"
+trait (e.g. salinity tolerance) must reach the site's value; an
+"optimum" trait (e.g. temperature, pH) must fall within the declared
+window around the site's value. A taxon marked indifferent ("x") for a
+trait is not excluded by a condition on that trait. The table is
+published per object (Ellenberg indicator values for the worked
+example in the field gallery entry — the Ellenberg column in Tichý et
+al. 2023, "Ellenberg-type indicator values for European vascular plant
+species", Zenodo record 7427088; Germany source Ellenberg & Leuschner
+2010, the revised edition of Ellenberg et al. 1991. Verified against
+that transcription 2026-10-26; Salicornia values are ssp. europaea) —
+a table transcribed for a build is verified against the published
+source before client use. The answer is
+the list that fits the site's extremes, not a ranking: it answers "which
+wild relatives / resilient varieties suit this site". (Source: BioDT —
+the crop wild relatives prototype, ModGP workflow; the deterministic
+filter is the transferable core.)
+
 ## 12. Microalgae, phytoplankton and aquatic primary producers
 
 | Indicator | What it tells | Tier | Typical anchor |
@@ -262,6 +349,7 @@ the detection limit and sampling date.
 | Amphibian occupancy, calling activity, breeding success | Wetland condition, hydroperiod, disease and contaminant pressure | Core for wetlands/ponds | Occupancy protocol with detection probability |
 | Reptile occurrence and habitat use | Dry/wet habitat mosaic condition | Conditional | Survey protocol; protected-species permits |
 | Bird abundance, territory occupancy, breeding success | Habitat quality across scales; strong trend detection | Core for conservation sites | eBird/national monitoring scheme protocols |
+| Diversity indices (Shannon, Pielou, taxonomic distinctness Δ+) | Community diversity beyond richness — see §11 | Core for conservation sites | `scripts/diversity.py indices`; taxonomy from the GBIF backbone |
 | Mammal occupancy, relative abundance, reproduction signs | Habitat use and disturbance; camera/acoustic effort recorded | Conditional | Camera-trap or track protocol; sensitive locations generalized |
 | Bat activity and roost occupancy | Insect base, light/noise and habitat condition | Conditional | Acoustic monitoring protocol |
 | Target and red-list species population trend | Conservation outcome | Core where present | Monitoring-scheme trends; a declining trend is red regardless of absolute numbers |
@@ -310,7 +398,9 @@ sections above as pressures are identified.
 - **Agriculture:** climate drivers; soil moisture, carbon, nutrients, biology
   and erosion; nutrient balance and input records; NDVI/EVI and phenology;
   receiving-water nutrient and sediment indicators; pollinators where crops or
-  field margins matter; land-cover and buffer condition.
+  field margins matter; land-cover and buffer condition; PFT shares and
+  trait–environment matching where the management question is which
+  varieties or wild relatives suit the site.
 - **Pond / lake:** hydrology and water level; stratification and ice where
   relevant; oxygen, pH, conductivity, transparency; nutrient forms and loads;
   chlorophyll and trophic state; phytoplankton composition and cyanobacteria;
@@ -347,3 +437,45 @@ Every indicator in a build carries a metadata record:
 
 An indicator without this record is a draft indicator. It may guide sampling
 design; it must not carry a client-facing conclusion.
+
+## 20. Watch levels and alert rules
+
+A watch level is an amber or red band on an indicator, set per object from
+its anchor (law, standard, literature, or the object's own baseline
+statistic). A breach becomes an alert only when it is sustained — the
+indicator stays in the band for at least the window (`scripts/alert_bands.py`
+`--window-hours`); a single spike never alerts. An observation gap longer
+than the maximum gap ends the episode. Every band carries its anchor; a
+band without one is refused by the script.
+
+**Covariate-aware alerts.** A breach is logged as *explained*, not
+alerted, when a named driver series (rainfall, flow, temperature) is itself
+beyond its own watch level in a sustained episode overlapping the breach's
+window (`scripts/alert_bands.py --explained-by driver.csv --driver-amber ...`).
+Only unexplained breaches alert, set the status, and count for `--fail-on`.
+The driver's own episode must be sustained for the same window — a brief
+driver spike explains nothing. Explained breaches are listed separately
+(`explained_breaches`), with the driver episode that explains them, so the
+decision is auditable and the explanation is never silent. The driver and
+its bands are named on the scenario card's Alerts field, never assumed.
+(Source: Southern Water — Stormharvester learns "normal behaviour" and
+silences wet-weather alarms; this is the deterministic version: a band
+check on a named driver, no ML.)
+
+**User-class operational thresholds.** One indicator, one forecast value —
+but a different operational limit per decision-maker class
+(`scripts/alert_bands.py --class-thresholds classes.csv`, CSV columns
+class, limit, in the indicator's units, same direction as the bands). The
+output gains a `class_thresholds` block: per class, the limit and whether
+the latest observed value and the episode peak are within it — `can_operate`
+is yes only when the class can operate now (latest value within its limit)
+and could operate at the event's worst moment (peak within its limit); with
+no alert episode the peak check is vacuous and only the latest value
+decides. A flooded road is passable for a pickup (limit 0.45 m) while it is
+not for a car (0.30 m) or an ambulance (0.35 m) — the same water, a
+different verdict per class. Distinct from the per-asset clearance
+(`scripts/registry.py --clearance`): the clearance is about an asset's
+margin; this is about who can do what. The limits are recorded in Phase 1
+onboarding, in the Object Passport (`assets/templates.md` §1): for each
+decision-maker, their operational limit in the same units as the indicator.
+(Source: Patos Lagoon — different user classes get different thresholds.)

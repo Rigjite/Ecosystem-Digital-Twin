@@ -1,0 +1,21 @@
+species,decimalLatitude,decimalLongitude,eventDate,basisOfRecord,datasetKey,category
+Emberiza aureola,,,2026-05-20,HUMAN_OBSERVATION,synthetic,extreme
+Aythya ferina,51.0,100.5,2026-06-06,HUMAN_OBSERVATION,synthetic,high
+Aegypius monachus,51.058,100.594,2026-08-30,HUMAN_OBSERVATION,synthetic,low
+Sibirionetta formosa,51.121,100.459,2026-09-15,HUMAN_OBSERVATION,synthetic,low
+Anser indicus,51.013,100.487,2026-05-20,HUMAN_OBSERVATION,synthetic,low
+Ciconia nigra,50.95,100.512,2026-06-06,HUMAN_OBSERVATION,synthetic,low
+Tetraogallus altaicus,51.056,100.595,2026-08-30,HUMAN_OBSERVATION,synthetic,low
+Cygnus cygnus,51.122,100.46,2026-09-15,HUMAN_OBSERVATION,synthetic,low
+Tadorna ferruginea,51.014,100.485,2026-05-20,HUMAN_OBSERVATION,synthetic,low
+Bucephala clangula,50.948,100.513,2026-06-06,HUMAN_OBSERVATION,synthetic,low
+Aythya fuligula,51.057,100.596,2026-08-30,HUMAN_OBSERVATION,synthetic,low
+Mergus merganser,51.123,100.458,2026-09-15,HUMAN_OBSERVATION,synthetic,low
+Larus mongolicus,51.012,100.486,2026-05-20,HUMAN_OBSERVATION,synthetic,low
+Phalacrocorax carbo,50.949,100.514,2026-06-06,HUMAN_OBSERVATION,synthetic,low
+Ardea cinerea,51.058,100.594,2026-08-30,HUMAN_OBSERVATION,synthetic,low
+Aquila chrysaetos,51.121,100.459,2026-09-15,HUMAN_OBSERVATION,synthetic,low
+Spatula querquedula,51.013,100.487,2026-05-20,HUMAN_OBSERVATION,synthetic,low
+Cygnus cygnus,50.95,100.512,2026-06-06,HUMAN_OBSERVATION,synthetic,low
+Aythya ferina,51.056,100.595,2026-08-30,HUMAN_OBSERVATION,synthetic,low
+Aves sp.,51.122,100.46,2026-09-15,HUMAN_OBSERVATION,synthetic,low
