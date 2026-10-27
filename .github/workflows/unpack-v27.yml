@@ -1,5 +1,7 @@
 name: unpack-v27
 on:
+  push:
+    branches: [release-v2.7]
   workflow_dispatch:
 permissions:
   contents: write
