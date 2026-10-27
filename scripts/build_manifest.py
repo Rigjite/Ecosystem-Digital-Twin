@@ -219,7 +219,9 @@ def build(idx, datasets, models, steps, outputs, mappings=None):
     # FAIR Signposting relations on the Root Dataset (cite-as /
     # describedby / license). Values come from the build index only:
     # no DOI or licence URL is ever invented here.
-    signposting = [{"relation": "describedby", "href": "ro-crate-metadata.json",
+    # Each entry also carries "@id" (= its href): JSON-LD link objects
+    # need one, and the rocrate library refuses crates without it.
+    signposting = [{"@id": "ro-crate-metadata.json", "relation": "describedby", "href": "ro-crate-metadata.json",
                     "type": "application/ld+json"}]
     if idx.get("doi"):
         doi_url = str(idx["doi"])
@@ -228,9 +230,9 @@ def build(idx, datasets, models, steps, outputs, mappings=None):
         elif not doi_url.startswith("http"):
             doi_url = "https://doi.org/" + doi_url
         root["identifier"] = doi_url
-        signposting.insert(0, {"relation": "cite-as", "href": doi_url})
+        signposting.insert(0, {"@id": doi_url, "relation": "cite-as", "href": doi_url})
     if str(lic).startswith("http"):
-        signposting.append({"relation": "license", "href": str(lic)})
+        signposting.append({"@id": str(lic), "relation": "license", "href": str(lic)})
     root["signposting"] = signposting
     graph.append(root)
     for i, d in datasets.items():
