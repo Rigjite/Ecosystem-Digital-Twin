@@ -5,7 +5,7 @@
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23657185.svg)](https://doi.org/10.5281/zenodo.23657185)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23681769.svg)](https://doi.org/10.5281/zenodo.23681769)
 
 [English](README.md) | Русский
 
@@ -213,7 +213,7 @@ python3 scripts/skill_scores.py continuous flows.csv \
 
 Балданова Р. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.7).
 <https://github.com/Rigjite/Ecosystem-Digital-Twin>\
-DOI: [10.5281/zenodo.23657185](https://doi.org/10.5281/zenodo.23657185)
+DOI: [10.5281/zenodo.23681769](https://doi.org/10.5281/zenodo.23681769)
 
 ## Лицензия
 
