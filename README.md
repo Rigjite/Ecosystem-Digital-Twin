@@ -1,7 +1,7 @@
 # Ecosystem Digital Twin — Agent Skill
 
 [![tests](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml/badge.svg)](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml)
-![version 2.3](https://img.shields.io/badge/version-2.3-blue)
+![version 2.7](https://img.shields.io/badge/version-2.7-blue)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
@@ -20,7 +20,25 @@ touches the real system. It serves two uses, in this order: a **consulting
 product** for a client (a farm, a water-body manager, a conservation project,
 a municipality) and a **research instrument** for the operator's own science.
 
-Current version: **2.3** (2026-10-25). License: CC BY 4.0.
+Current version: **2.7** (2026-10-26). License: CC BY 4.0.
+
+## Ecosystems covered
+
+- **Ponds and lakes.** Water-quality indices (WPI, TSI, HPI), trend tests, and alert bands on the state of the water. Example: Beira Lake, Colombo (real published data — WPI 2.53 dry / 2.38 wet, trial forecast BEIRA-F-001 registered) and the pond eutrophication miniature (synthetic).
+- **River reaches.** Flow trends, declared watch levels, and flood warning lead time, checked by historical-event replay. Example: Potomac River at Little Falls (real data) — the replay measured a 2-day warning lead time: an amber alert on 2026-10-12 ahead of the flood peak on 2026-10-14.
+- **Wetlands.** Nutrient removal by treatment wetlands and marsh water levels, with the same index and alert machinery. Example: the Everglades treatment wetland + marsh entry (real data).
+- **Agricultural land and crop fields.** Soil-moisture watch from open streams (daily, forecast, and historical weather; NDVI from Sentinel-2/Landsat), trait–environment matching against published Ellenberg values, plant functional type shares, and diversity indices. Example: the field soil-moisture miniature (synthetic).
+- **Forests.** Fire seasons, logging, and carbon stock, each as its own miniature under the same gates. Examples: Prince Albert FMA fire seasons and carbon stock (Saskatchewan) and British Columbia timber supply areas (logging) — all synthetic.
+- **Air basins.** PM2.5 watch with amber/red bands and sustained-breach windows. Example: the Prince George winter PM2.5 miniature (British Columbia, synthetic).
+- **Biodiversity and flora–fauna conservation.** Diversity indices (Shannon, Pielou, Clarke–Warwick Δ+), functional-type shares, and trait matching — with sensitive-species coordinates generalized to the 0.1° grid per GBIF practice before anything is shared. Example: Khubsugul lakeshore birds, Mongolia (synthetic records; real IUCN sensitivity categories).
+- **Contaminated soils.** Hazard assessment (hazard quotient / hazard index) and the circular-economy Safety Gate: waste or sediment from one ecosystem becomes an input to another only when laboratory verification confirms compliance. The worked proof is the cascade (polluted water body → sludge treatment node → agricultural field); there is no standalone soil gallery miniature yet.
+- **Linked multi-ecosystem cascades.** Twin networks in which the output of one ecosystem is the input of the next, with twin-to-twin notifications, trigger–action–response plans, and the Safety Gate on every transfer. Example: the cascade design and the Beira decision arithmetic (the wetland option).
+
+## Keywords
+
+`digital-twin` · `ecosystem` · `environmental-monitoring` · `water-quality` · `remote-sensing` · `sentinel-2` · `agriculture` · `precision-agriculture` · `biodiversity` · `conservation` · `air-quality` · `agent-skill` · `evidence-based` · `ro-crate`
+
+These are the repository's GitHub topics.
 
 ## Why this skill
 
@@ -130,6 +148,13 @@ threshold or fails to beat a naive baseline.
 | `scripts/registry.py` | 3–4 | Append-only, hash-chained forecast registry; scores forecasts exactly as issued |
 | `scripts/generalize_coords.py` | all | Sensitive-species coordinate generalization (GBIF categories, 0.1° floor) with a pre-sharing check |
 | `scripts/build_manifest.py` | 6 | RO-Crate 1.1 provenance package; every headline number traced and cited |
+| `scripts/drift.py` | 2 | Lagrangian drift and connectivity between sites: per-zone arrivals, connectivity fraction, median travel hours |
+| `scripts/diversity.py` | 2 | Diversity indices (Shannon, Pielou, Clarke–Warwick Δ+) and plant functional type shares |
+| `scripts/trait_match.py` | 2 | Trait–environment matching against published Ellenberg values, with the "indifferent" rule |
+| `scripts/sensitivity_screen.py` | 3 | Sensitivity-first calibration: perturb each model parameter one at a time, rank by change; calibrate only the influential ones |
+| `scripts/mismatch.py` | 3–4 | Mismatch register (the learning log): extent, misses, false alarms, each with a recorded cause |
+| `scripts/forecast_bulletin.py` | 4 | Daily forecast bulletin: one dated page with observed vs forecast value, watch status, and the scoring date |
+| `scripts/scenario_generate.py` | 5 | Stochastic scenario generator: seeded driver series with fitted mean, SD, lag-1 autocorrelation, and breach share |
 
 <details>
 <summary>Package structure</summary>
@@ -152,14 +177,14 @@ threshold or fails to beat a naive baseline.
 | `examples/beira/` | Worked example on a real lake (Beira Lake, Colombo) from published data only: state vs thresholds, cross-check with independent studies, a source check, decision arithmetic for wetlands, value of a sludge analysis, a registered trial forecast, and the data gaps |
 | `scripts/` | The calculation toolkit above |
 | `tests/test_scripts.py`, `tests/check_package.py` | Unit and end-to-end tests of the scripts; the package lint |
-| `tests/TESTS.md` | Behavioral and automated tests (T1–T31), traceability table, run log |
+| `tests/TESTS.md` | Behavioral and automated tests (T1–T80), traceability table, run log |
 | `CHANGELOG.md`, `CITATION.cff` | Version history; citation metadata |
 
 </details>
 
 ## Status and evaluation
 
-- **Automated:** 60 unit and end-to-end tests plus the package lint run on
+- **Automated:** 227 unit and end-to-end tests plus the package lint run on
   every push (see the tests badge). Run them locally with
   `python3 -m unittest discover -s tests` and `python3 tests/check_package.py`.
 - **Evaluation history:** every round, its scores, and the defects found and
@@ -171,7 +196,7 @@ threshold or fails to beat a naive baseline.
 
 - Pilot build on a real water body with open data; run the behavioral tests
   live and publish the run log.
-- Independent cross-vendor evaluation round of version 2.2.
+- Independent cross-vendor evaluation round of version 2.7.
 - Data-access helpers: GBIF downloads with citable DOIs, Sentinel-2 via STAC.
 - Export of the forecast registry in the Ecological Forecasting Initiative
   output and metadata standard.
@@ -182,7 +207,7 @@ Issues and suggestions are welcome.
 
 Use GitHub's **Cite this repository** button (from [`CITATION.cff`](CITATION.cff)), or:
 
-Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.2).
+Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.7).
 <https://github.com/Rigjite/Ecosystem-Digital-Twin>\
 DOI: [10.5281/zenodo.23657185](https://doi.org/10.5281/zenodo.23657185)
 
@@ -190,3 +215,7 @@ DOI: [10.5281/zenodo.23657185](https://doi.org/10.5281/zenodo.23657185)
 
 CC BY 4.0 — see [`LICENSE`](LICENSE). You may reuse and adapt the skill with
 attribution.
+
+## Author
+
+Rigjita Baldanova — ORCID: <https://orcid.org/0009-0009-7891-7007>

@@ -6,8 +6,7 @@ authors:
   - family-names: Baldanova
     given-names: Rigjita
     orcid: "https://orcid.org/0009-0009-7891-7007"
-    affiliation: "PCS Co., Ltd., Sapporo, Japan"
-version: "2.3"
+version: "2.7"
 doi: 10.5281/zenodo.23657185
 date-released: "2026-10-26"
 license: CC-BY-4.0

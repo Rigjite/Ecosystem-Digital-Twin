@@ -5,6 +5,7 @@
 2. Value of information and adaptive sampling
 3. Forecast registry and pre-registration (`scripts/registry.py`)
 4. The counterfactual twin — proving improvement
+5. Historical-event replay — the twin as a trainer
 
 Four methods that turn the twin's honesty from wording into arithmetic and
 institutions. They are used at decision and predictive maturity levels;
@@ -49,6 +50,13 @@ Rule: a number whose uncertainty cannot be computed yet is published with
 the reason and the plan to compute it — never with a decorative interval
 invented for appearance.
 
+**Explainability under pressure.** When a decision must be made under time
+pressure, the twin states in plain terms what the model used, what it did
+not use, and how confident it is — the drivers of the result in one or two
+sentences, recorded on the scenario card. A verdict without that
+explanation is not a decision input; it is a black box, and the
+decision-maker is told so.
+
 ## 2. Value of information and adaptive sampling
 
 Monitoring budgets are finite; the twin spends them where they matter.
@@ -61,6 +69,18 @@ Monitoring budgets are finite; the twin spends them where they matter.
   by expected reduction in decision uncertainty per unit cost. State the
   decision each candidate serves; a measurement that serves no decision is
   not recommended, however interesting scientifically.
+- **Spread-informed sampling priority.** The concrete rule that turns
+  "information has value" into "sample here next": rank the next sampling
+  targets (stations, dates, variables) by disagreement between the
+  admitted model and the naive benchmark, or between candidate models
+  (`scripts/uncertainty_budget.py sampling-priority` — input: target +
+  model/naive or model_a/model_b; disagreement = |a − b|; ties by input
+  order). Sample the top target next: where the models disagree most, a
+  measurement decides between them. A target whose models agree needs no
+  sample — the twin already knows. The ranking is recorded on the
+  scenario card (`assets/templates.md` §6) so the next field campaign is
+  a decision of the twin, not a guess. (Source: lake platforms — Sensors
+  2026, 26, 6175, spread-informed mobile sampling.)
 - **Sensor placement** follows the same logic: gradient coverage (inflow →
   center → outflow; upwind → source → downwind), event capture (the place
   where the event shows first), redundancy for the fall-back hierarchy,
@@ -102,6 +122,39 @@ Predictive claims are earned in public, in advance.
   machine-readable form so scores are comparable across builds and over time.
 - A forecast found to have been issued but not registered is treated as
   not issued: it earns no verification credit and supports no claim.
+- **Alerts are trialled separately from the model.** A model can beat its
+  benchmark and still cry wolf, or stay silent when it matters — so the
+  alerts themselves are scored on a hold-out window
+  (`scripts/skill_scores.py alert-trial`): precision (relevant alerts /
+  all alerts), miss rate (missed critical events / all critical events),
+  alarm volume. The trial passes only at precision >= 0.9, zero missed
+  criticals, and the alarm count within cap; a window with no alerts is a
+  FAIL, because a silent trial proves nothing. The trial is a separate
+  gate from model admission (SS_RMSE > 0): both must pass. (Source:
+  Southern Water / Wessex Water's 3-month Bath trial: 92% of alerts
+  relevant, 8% false positives, zero missed pollution incidents, 97%
+  alarm reduction, 4,500 → 138.)
+
+- **Mismatch register — learning from the pattern of the error.** A
+  failed validation is a score; the mismatch register is the lesson. For
+  spatial or categorical predictions, record where observed ≠ modeled
+  (`scripts/mismatch.py` — two tables, observed vs modeled, cell by
+  cell): the *extent* (fraction of observed flooded cells correctly
+  predicted) alongside the level score, the misses (observed but not
+  modeled) and the false alarms (modeled but not observed), the inferred
+  hidden cause as a [ГИПОТЕЗА]/[НЕТ ДАННЫХ] item, and the measurement
+  that would confirm it. The register entry is recorded in the
+  calibration audit (`assets/templates.md` §12). The register is the
+  learning log, not a gate: the alert trial and the hindcast
+  reproduction gate are pass/fail — a failed gate revokes admission —
+  while the register explains *why* a validation was bad and turns the
+  failure into the next data requirement. (The alert trial adds a third
+  verdict, INCONCLUSIVE_QUIET_WINDOW, for a window with no alerts and no
+  critical events: nothing to score, so it neither admits nor rejects.) A failed validation with no
+  register entry is a score with no lesson. (Source: Patos Lagoon —
+  where the flood model missed flooding, the team inferred a hidden
+  pathway, an underground drainage network without backflow control,
+  from the pattern of the disagreement itself.)
 
 ## 4. The counterfactual twin — proving improvement
 
@@ -135,3 +188,57 @@ When the owner implements a measure, the twin splits:
 This mode is what turns a twin from a monitoring expense into proof of
 impact — for the owner's own decisions first, and for funders and
 regulators when they ask what the money bought.
+
+Scenario 0 is class 0 of the scenario taxonomy
+(`references/scenarios.md`): planning and what-if scenarios are judged
+against it, never instead of it.
+
+## 5. Historical-event replay — the twin as a trainer
+
+A twin that proves it would have warned about a real past event is one a
+client can trust. The replay protocol is that proof, run on the event as
+it happened:
+
+- **Pick a named historical extreme from the object's own record** — a
+  flood peak, a bloom, a fire season, a fish kill — with a dated event
+  and a dated data series leading up to it.
+- **Cut the data at the last observation before the event.** The
+  pipeline (QC → trend → alert bands, the existing scripts) sees only
+  data up to the cutoff — never the event itself. A replay that peeks
+  at the event is not a replay; it is a post-hoc fit, and the red team
+  treats it as such.
+- **Run the pipeline and record WHETHER AND WHEN the alert fired** —
+  the alert's start timestamp and the lead time in days from the alert
+  to the event. A lead time measured this way fills the lead-time
+  register (v2.4) with a measured value, not a claimed one.
+- **A miss is a finding, not a failure to report.** If the alert did
+  not fire, the replay records `alert_fired: no` and no lead time — and
+  the reason is investigated (band too high, window too long, driver
+  unmeasured) and recorded as a [ГИПОТЕЗА]/[НЕТ ДАННЫХ] item with the
+  measurement that would confirm it.
+- **Record the replay in the registry** (`scripts/registry.py replay`):
+  id, event (named), event date, data cutoff, alert fired (yes/no),
+  lead time in days (when the alert fired), method (the pipeline run),
+  inputs (manifest ids of the data up to the cutoff), model and version.
+  The record is hash-chained like every registry record, so a replay
+  recorded as run cannot be edited afterwards; `score` ignores replay
+  records (only forecasts are scored).
+
+**Boundary — replay vs storyline.** A replay runs the pipeline on the
+event AS IT HAPPENED (a verification: would the twin have warned in
+time?); a storyline (`references/scenarios.md` — the Storyline class)
+replays an event under CHANGED drivers (a scenario: what if it happened
+again, hotter or drier?). The two are recorded separately and never
+substitute for each other: a storyline never claims the alert fired, and
+a replay never claims a changed-driver outcome. (Source: Digital Baikal —
+the managed-mudflow twin as a trainer, replaying the 2019 mudflow that
+passed critically close to nine BPPM sludge ponds.)
+
+**Boundary — replay vs hindcast gate.** A replay checks whether the twin
+would have WARNED in time about a historical extreme (the alert
+pipeline on the event as it happened); the hindcast reproduction gate
+(`references/scenarios.md` — Phase 5 rule) checks whether the scenario
+MODEL reproduces the observed historical period with the intervention
+switched off, before its delta is trusted. The replay verifies an alert;
+the gate validates a scenario model. A successful replay never validates
+a scenario delta, and a passed gate never claims the alert fired.

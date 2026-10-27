@@ -40,7 +40,7 @@ JSON input (trend mode): a .json file {"values": [float], "timestamps":
 spec keys s_stat, var_s_raw, hamed_rao_factor, z_corrected, p_value,
 theil_sen_slope, trend ("increasing" | "decreasing" | "no trend").
 
-Index modes (--mode wpi | tsi | hpi) take a JSON file and compute the
+Index modes (--mode wpi | tsi | hpi | hq) take a JSON file and compute the
 water-quality indices of the skill's Core Mathematical Specifications:
   wpi  {"indicators": [{"name": str, "concentration": float, "mac": float,
        "dissolved_oxygen": bool}]} — WPI = mean(C/MAC); for dissolved
@@ -52,6 +52,24 @@ water-quality indices of the skill's Core Mathematical Specifications:
   hpi  {"metals": [{"name": str, "measured": float, "standard": float,
        "ideal": float}]} — HPI = sum(W*Q)/sum(W), W = 1/S,
        Q = 100*|M - I|/(S - I); critical when HPI > 100.
+  hq   {"stressors": [{"name": str, "exposure": float, "reference": float,
+       "duration": "acute" | "chronic", "target": str}]} — HQ = exposure /
+       reference per stressor; HI = sum of HQs, split acute/chronic;
+       unsafe when HI > 1 (the safety line). Same quotient family as HPI,
+       but HPI covers only metals in water on a 100-scale; HQ/HI covers
+       any stressor on a 1-scale.
+
+Drift mode (--mode drift) checks a new batch against its calibration
+baseline for the recalibration trigger: --baseline CAL.csv gives the
+calibration series; the input file is the new batch (QC-passed; rows
+with qc_flag != "ok" are excluded when the column exists). Level drift
+is |mean(new) - mean(calibration)| / sd(calibration), firing at
+--drift-threshold (default 2.0, declared per indicator in the Object
+Passport); trend drift fires when the new batch's Sen slope falls
+outside the calibration slope's Gilbert confidence interval (needs
+--min-n new values, default 8). Output JSON carries `trigger` and
+`action` ("recalibrate" | "no action"); exit 0 is a report, 2 an input
+error. A fired trigger is a normal event, not a failure.
 
 Output: JSON with one result per segment. Exit 0 on success, 2 input error.
 """
@@ -336,6 +354,46 @@ def heavy_metal_pollution_index(metals):
     return {"hpi": hpi, "critical": hpi > 100, "threshold": 100, "terms": terms}
 
 
+def hazard_quotient_index(stressors):
+    """HQ = exposure / reference per stressor; HI = sum of HQs, split by
+    duration (acute / chronic). The safety line is 1: HI above 1 is
+    unsafe. Same quotient family as HPI, but HPI covers only metals in
+    water on a 100-scale; HQ/HI covers any stressor (air, water, smoke,
+    chemicals) on a 1-scale, with the acute/chronic split. References
+    must be > 0, exposures >= 0; duration defaults to "chronic" when not
+    stated. Each term records its target (e.g. respiratory) where known;
+    the published HI is often reported per target organ — this function
+    sums by duration and keeps the target on the term, so a per-target
+    HI is read off the terms."""
+    if not stressors:
+        raise ValueError("HQ/HI needs at least one stressor")
+    terms, hi_acute, hi_chronic = [], 0.0, 0.0
+    for st in stressors:
+        try:
+            e = float(st["exposure"])
+            ref = float(st["reference"])
+        except (KeyError, TypeError, ValueError):
+            raise ValueError(f"stressor {st!r} needs numeric 'exposure' and 'reference'")
+        if ref <= 0:
+            raise ValueError(f"stressor {st.get('name', '?')}: reference must be > 0")
+        if e < 0:
+            raise ValueError(f"stressor {st.get('name', '?')}: exposure must be >= 0")
+        duration = str(st.get("duration", "chronic")).lower()
+        if duration not in ("acute", "chronic"):
+            raise ValueError(f"stressor {st.get('name', '?')}: duration must be 'acute' or 'chronic'")
+        hq = e / ref
+        terms.append({"name": st.get("name", "?"), "hq": hq, "duration": duration,
+                      "target": st.get("target")})
+        if duration == "acute":
+            hi_acute += hq
+        else:
+            hi_chronic += hq
+    hi = hi_acute + hi_chronic
+    return {"hi": hi, "hi_acute": hi_acute, "hi_chronic": hi_chronic,
+            "unsafe": hi > 1, "unsafe_acute": hi_acute > 1,
+            "unsafe_chronic": hi_chronic > 1, "threshold": 1, "terms": terms}
+
+
 def regular(times):
     steps = [b - a for a, b in zip(times, times[1:])]
     if len(steps) < 2:
@@ -492,14 +550,111 @@ def run_index_mode(mode, data):
         if not isinstance(data.get("metals"), list):
             raise ValueError("HPI mode needs a 'metals' list")
         return {"mode": "hpi", **heavy_metal_pollution_index(data["metals"])}
+    if mode == "hq":
+        if not isinstance(data.get("stressors"), list):
+            raise ValueError("HQ/HI mode needs a 'stressors' list")
+        return {"mode": "hq", **hazard_quotient_index(data["stressors"])}
     raise ValueError(f"unknown mode '{mode}'")
+
+
+def load_series(path, value_col, time_col):
+    """Load one CSV series as (decimal-year times, values, qc-excluded rows, has-qc-column).
+
+    Rows with a qc_flag column value other than "ok" (or empty) are
+    excluded: only QC-passed observations count as data. Rows without a
+    valid timestamp or value are dropped. Times are sorted.
+    """
+    with open(path, newline="", encoding="utf-8-sig") as fh:
+        reader = csv.DictReader(fh, delimiter=sniff_delimiter(path))
+        fields = reader.fieldnames or []
+        if value_col not in fields:
+            raise ValueError(f"column '{value_col}' not found in {path}")
+        if time_col not in fields:
+            raise ValueError(f"column '{time_col}' not found in {path}")
+        has_qc = "qc_flag" in fields
+        pairs, excluded = [], 0
+        for r in reader:
+            if has_qc and (r.get("qc_flag") or "").strip() not in ("ok", ""):
+                excluded += 1
+                continue
+            t, v = ftime(r[time_col]), fnum(r.get(value_col))
+            if t is not None and v is not None:
+                pairs.append((decimal_year(t), v))
+    pairs.sort(key=lambda x: x[0])
+    return [p[0] for p in pairs], [p[1] for p in pairs], excluded, has_qc
+
+
+def run_drift_mode(cal_path, new_path, threshold, min_n, value_col, time_col):
+    """Recalibration trigger: drift of a new batch against its calibration baseline.
+
+    Level drift is |mean(new) - mean(calibration)| / sd(calibration)
+    (sample sd); it fires at the declared threshold. Trend drift fires
+    when the new batch's Sen slope falls outside the calibration slope's
+    Gilbert confidence interval (same test_segment machinery as the
+    trend test; needs min_n new values). Either component fires the
+    trigger. A fired trigger is a report (exit 0), not a failure: the
+    runner recalibrates, recomputes alert bands, and revalidates.
+    """
+    cal_times, cal_values, cal_excl, cal_qc = load_series(cal_path, value_col, time_col)
+    new_times, new_values, new_excl, new_qc = load_series(new_path, value_col, time_col)
+    if len(cal_values) < 3:
+        raise ValueError(f"calibration series has only {len(cal_values)} usable values; need at least 3")
+    if len(new_values) < 3:
+        raise ValueError(f"new batch has only {len(new_values)} usable values; need at least 3")
+    warnings = []
+    if not new_qc:
+        warnings.append("new batch has no qc_flag column: QC was not applied; run qc_series.py --out first")
+    if not cal_qc:
+        warnings.append("calibration series has no qc_flag column")
+    if cal_excl:
+        warnings.append(f"{cal_excl} calibration rows excluded by qc_flag")
+    if new_excl:
+        warnings.append(f"{new_excl} new-batch rows excluded by qc_flag")
+    mean_cal = sum(cal_values) / len(cal_values)
+    sd_cal = math.sqrt(sum((v - mean_cal) ** 2 for v in cal_values) / (len(cal_values) - 1))
+    mean_new = sum(new_values) / len(new_values)
+    if sd_cal > 0:
+        drift_level = abs(mean_new - mean_cal) / sd_cal
+        level_fires = drift_level >= threshold
+    else:
+        drift_level = None
+        level_fires = mean_new != mean_cal
+        warnings.append("calibration series is constant (sd 0): level drift not measurable; "
+                        "any mean shift fires the trigger")
+    res_cal = test_segment(cal_times, cal_values, 0.05, "hamed-rao", False, [1] * len(cal_values))
+    slope_cal = res_cal["sen_slope_per_year"]
+    ci_cal = res_cal["slope_ci"]
+    slope_new, trend_fires = None, None
+    if len(new_values) >= min_n:
+        res_new = test_segment(new_times, new_values, 0.05, "hamed-rao", False, [1] * len(new_values))
+        slope_new = res_new["sen_slope_per_year"]
+        if ci_cal[0] is not None and ci_cal[1] is not None:
+            trend_fires = slope_new < ci_cal[0] or slope_new > ci_cal[1]
+        else:
+            warnings.append("calibration slope confidence interval unavailable: trend drift not assessed")
+    else:
+        warnings.append(f"new batch has {len(new_values)} values (< {min_n}): trend drift not assessed")
+    trigger = bool(level_fires or trend_fires)
+    return {
+        "mode": "drift", "value_col": value_col, "threshold": threshold,
+        "n_calibration": len(cal_values), "n_new": len(new_values),
+        "rows_excluded_qc": new_excl, "calibration_rows_excluded_qc": cal_excl,
+        "mean_calibration": mean_cal, "sd_calibration": sd_cal, "mean_new": mean_new,
+        "drift_level": drift_level, "level_fires": level_fires,
+        "slope_calibration": slope_cal, "slope_ci_calibration": ci_cal,
+        "slope_new": slope_new, "trend_fires": trend_fires,
+        "trigger": trigger,
+        "action": "recalibrate" if trigger else "no action",
+        "warnings": warnings,
+    }
 
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("input")
-    ap.add_argument("--mode", choices=["trend", "wpi", "tsi", "hpi"], default="trend",
-                    help="trend: Mann-Kendall test (default); wpi/tsi/hpi: water-quality index from a JSON file")
+    ap.add_argument("--mode", choices=["trend", "wpi", "tsi", "hpi", "hq", "drift"], default="trend",
+                    help="trend: Mann-Kendall test (default); wpi/tsi/hpi/hq: index from a JSON file; "
+                         "drift: recalibration trigger, new batch vs --baseline calibration series")
     ap.add_argument("--time-col", default="time")
     ap.add_argument("--value-col", default="value")
     ap.add_argument("--breaks", help="comma list of ISO dates where a registered break starts a new segment")
@@ -511,14 +666,25 @@ def main(argv=None):
     ap.add_argument("--prewhiten", choices=["auto", "tfpw", "none"], help=argparse.SUPPRESS)  # v2.0 alias
     ap.add_argument("--alpha", type=float, default=None)
     ap.add_argument("--min-n", type=int, default=8)
+    ap.add_argument("--baseline", help="calibration series CSV for --mode drift (the new batch is the input file)")
+    ap.add_argument("--drift-threshold", type=float, default=2.0,
+                    help="level-drift threshold in calibration SDs for --mode drift (default 2.0; "
+                         "declare the per-indicator value in the Object Passport)")
     a = ap.parse_args(argv)
     alpha = a.alpha if a.alpha is not None else 0.05
     autocorr = {"auto": "hamed-rao", "tfpw": "tfpw", "none": "none"}.get(a.prewhiten, a.autocorr)
     try:
-        if a.mode in ("wpi", "tsi", "hpi"):
+        if a.mode in ("wpi", "tsi", "hpi", "hq"):
             with open(a.input, encoding="utf-8") as fh:
                 data = json.load(fh)
             out = run_index_mode(a.mode, data)
+            print(json.dumps(out, ensure_ascii=False, indent=2))
+            return 0
+        if a.mode == "drift":
+            if not a.baseline:
+                raise ValueError("--mode drift needs --baseline <calibration series>")
+            out = run_drift_mode(a.baseline, a.input, a.drift_threshold, a.min_n,
+                                 a.value_col, a.time_col)
             print(json.dumps(out, ensure_ascii=False, indent=2))
             return 0
         if a.input.endswith(".json"):

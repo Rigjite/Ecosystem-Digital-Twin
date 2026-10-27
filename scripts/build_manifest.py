@@ -23,7 +23,11 @@ Build index shape (all ids unique across the file):
   "steps":    [{"id": "st-01", "name": "...", "instrument": "m-01",
                 "inputs": ["ds-01"], "parameters": "...", "date": "YYYY-MM-DD"}],
   "outputs":  [{"id": "out-01", "name": "...", "value": 4.2, "unit": "mg/m3",
-                "produced_by": "st-01", "headline": true}]
+                "produced_by": "st-01", "headline": true}],
+  "mappings": [{"id": "map-01", "dataset": "ds-01",
+                "path": "examples/gallery/pond/mappings.csv",
+                "standard": "Darwin Core"}],   (optional; one per dataset mapping file)
+  "doi": "10.5281/zenodo.23657185",               (optional; package DOI, bare or full URL)
 }
 
 Checks (errors stop the build, exit 3): missing required fields; unknown or
@@ -35,6 +39,14 @@ as [out-id] and every cited [id] to exist in the index.
 --registry FILE ties forecasts to the package: the forecast registry's hash
 chain must verify, and every input id of every registered forecast must be a
 dataset or output of this build index.
+
+Signposting (FAIR, signposting.org): the Root Dataset of the crate carries
+explicit typed links — cite-as (the package DOI, from "doi", never invented:
+absent when no DOI is given), describedby (ro-crate-metadata.json itself),
+license (the index license, included only when given as an http(s) URL).
+The same relations belong in HTTP Link headers when the package is served
+over HTTP; the crate entries are the static, file-based form of the same
+links.
 
 Usage:
   python3 build_manifest.py build.json --out-dir package/
@@ -134,7 +146,19 @@ def validate(idx, base_dir):
             errors.append(f"{i}: 'value' is required")
         if o.get("produced_by") not in steps:
             errors.append(f"{i}: produced_by '{o.get('produced_by')}' is not a known step id")
-    return errors, warnings, datasets, models, steps, outputs
+    mappings = {}
+    for mp in idx.get("mappings", []):
+        i = register("mapping", mp)
+        if i is None:
+            continue
+        mappings[i] = mp
+        if mp.get("dataset") not in datasets:
+            errors.append(f"{i}: dataset '{mp.get('dataset')}' is not a known dataset id")
+        if not mp.get("path"):
+            errors.append(f"{i}: 'path' (the mappings.csv file) is required")
+        elif not os.path.exists(os.path.join(base_dir, mp["path"])):
+            warnings.append(f"{i}: file '{mp['path']}' not found next to the package")
+    return errors, warnings, datasets, models, steps, outputs, mappings
 
 
 def check_registry(path, known_ids):
@@ -169,7 +193,7 @@ def check_report(path, ids, outputs):
     return errors, sorted(cited)
 
 
-def build(idx, datasets, models, steps, outputs):
+def build(idx, datasets, models, steps, outputs, mappings=None):
     def ref(x):
         return {"@id": x}
 
@@ -179,6 +203,7 @@ def build(idx, datasets, models, steps, outputs):
             return d.get("path") or d.get("url")
         return "#" + i
 
+    mappings = mappings or {}
     graph = [
         {"@id": "ro-crate-metadata.json", "@type": "CreativeWork",
          "conformsTo": ref(CONFORMS), "about": ref("./")},
@@ -188,9 +213,25 @@ def build(idx, datasets, models, steps, outputs):
         "@id": "./", "@type": "Dataset", "name": idx["name"], "description": idx["description"],
         "datePublished": idx.get("datePublished") or date.today().isoformat(),
         "license": ref(lic) if str(lic).startswith("http") else lic,
-        "hasPart": [ref(ent_id(i)) for i in datasets],
+        "hasPart": [ref(ent_id(i)) for i in datasets] + [ref(mp["path"]) for mp in mappings.values()],
         "mentions": [ref("#" + i) for i in steps],
     }
+    # FAIR Signposting relations on the Root Dataset (cite-as /
+    # describedby / license). Values come from the build index only:
+    # no DOI or licence URL is ever invented here.
+    signposting = [{"relation": "describedby", "href": "ro-crate-metadata.json",
+                    "type": "application/ld+json"}]
+    if idx.get("doi"):
+        doi_url = str(idx["doi"])
+        if doi_url.startswith("doi.org/"):
+            doi_url = "https://" + doi_url
+        elif not doi_url.startswith("http"):
+            doi_url = "https://doi.org/" + doi_url
+        root["identifier"] = doi_url
+        signposting.insert(0, {"relation": "cite-as", "href": doi_url})
+    if str(lic).startswith("http"):
+        signposting.append({"relation": "license", "href": str(lic)})
+    root["signposting"] = signposting
     graph.append(root)
     for i, d in datasets.items():
         local = bool(d.get("path"))
@@ -232,6 +273,17 @@ def build(idx, datasets, models, steps, outputs):
         if o.get("description"):
             e["description"] = o["description"]
         graph.append(e)
+    for i, mp in mappings.items():
+        # Semantic mapping set (Round 4 of the v2.7 program, BioDT): one
+        # MappingSet entity per mappings.csv, about the dataset it maps,
+        # conforming to the SSSOM specification (https://w3id.org/sssom/).
+        e = {"@id": mp["path"], "@type": "File", "additionalType": "MappingSet",
+             "name": f"Semantic mapping for {datasets[mp['dataset']].get('name', mp['dataset'])}",
+             "identifier": i, "about": ref(ent_id(mp["dataset"])),
+             "conformsTo": ref("https://w3id.org/sssom/"), "encodingFormat": "text/csv"}
+        if mp.get("standard"):
+            e["description"] = f"Standard terms: {mp['standard']}"
+        graph.append(e)
     return {"@context": CONTEXT, "@graph": graph}
 
 
@@ -249,7 +301,7 @@ def main(argv=None):
     except (OSError, json.JSONDecodeError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2
-    errors, warnings, datasets, models, steps, outputs = validate(idx, a.out_dir)
+    errors, warnings, datasets, models, steps, outputs, mappings = validate(idx, a.out_dir)
     cited = None
     if a.report:
         try:
@@ -268,7 +320,7 @@ def main(argv=None):
         errors += g_err
     result = {"index": a.index, "errors": errors, "warnings": warnings,
               "counts": {"datasets": len(datasets), "models": len(models), "steps": len(steps),
-                         "outputs": len(outputs)},
+                         "outputs": len(outputs), "mappings": len(mappings)},
               "cited_in_report": cited, "registered_forecasts": n_forecasts}
     if errors:
         result["gate"] = "fail"
@@ -278,7 +330,7 @@ def main(argv=None):
         os.makedirs(a.out_dir, exist_ok=True)
         path = os.path.join(a.out_dir, "ro-crate-metadata.json")
         with open(path, "w", encoding="utf-8") as fh:
-            json.dump(build(idx, datasets, models, steps, outputs), fh, ensure_ascii=False, indent=2)
+            json.dump(build(idx, datasets, models, steps, outputs, mappings), fh, ensure_ascii=False, indent=2)
         result["written"] = path
     result["gate"] = "pass"
     print(json.dumps(result, ensure_ascii=False, indent=2))

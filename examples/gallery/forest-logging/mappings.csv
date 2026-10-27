@@ -1,0 +1,6 @@
+file,local_field,standard_term,standard,justification
+logging.csv,time,dwc:eventDate,Darwin Core,"Observation timestamp; Darwin Core eventDate is the standard term for when an observation was recorded. For a non-biodiversity series it is borrowed as the observation timestamp — a cross-domain borrowing, stated here, not a Darwin Core-native use."
+logging.csv,prince_george_ha,schema:value,Schema.org,"Area logged in the Prince George timber supply area, ha, carried as a Schema.org value."
+logging.csv,quesnel_ha,schema:value,Schema.org,"Area logged in the Quesnel timber supply area, ha, carried as a Schema.org value."
+logging.csv,mackenzie_ha,schema:value,Schema.org,"Area logged in the Mackenzie timber supply area, ha, carried as a Schema.org value."
+logging.csv,harvest_m3,schema:value,Schema.org,"Harvest volume, m³, carried as a Schema.org value."

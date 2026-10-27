@@ -1,0 +1,6 @@
+file,local_field,standard_term,standard,justification
+level.csv,time,dwc:eventDate,Darwin Core,"Observation timestamp; Darwin Core eventDate is the standard term for when an observation was recorded. For a non-biodiversity series it is borrowed as the observation timestamp — a cross-domain borrowing, stated here, not a Darwin Core-native use."
+level.csv,value,schema:value,Schema.org,"The measured quantity of the observation (water level, ft NAVD88), carried as a Schema.org value; the unit is recorded in the dataset README, not in this column."
+nutrients.csv,time,dwc:eventDate,Darwin Core,"Observation timestamp; Darwin Core eventDate is the standard term for when an observation was recorded. For a non-biodiversity series it is borrowed as the observation timestamp — a cross-domain borrowing, stated here, not a Darwin Core-native use."
+nutrients.csv,tp_in_ug_l,schema:value,Schema.org,"Influent total phosphorus, µg/L, carried as a Schema.org value."
+nutrients.csv,tp_out_ug_l,schema:value,Schema.org,"Effluent total phosphorus, µg/L, carried as a Schema.org value."
