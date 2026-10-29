@@ -6,7 +6,7 @@
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
 [![Code: Apache 2.0](https://img.shields.io/badge/code-Apache_2.0-blue)](LICENSE-CODE)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23681769.svg)](https://doi.org/10.5281/zenodo.23681769)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23751220.svg)](https://doi.org/10.5281/zenodo.23751220)
 
 English | [Русский](README.ru.md)
 
@@ -232,7 +232,7 @@ Use GitHub's **Cite this repository** button (from [`CITATION.cff`](CITATION.cff
 
 Baldanova, R. (2026). *Ecosystem Digital Twin by Rigjita Baldanova — Agent Skill* (v2.8).
 <https://github.com/Rigjite/Ecosystem-Digital-Twin>\
-DOI: [10.5281/zenodo.23681769](https://doi.org/10.5281/zenodo.23681769)
+DOI: [10.5281/zenodo.23751220](https://doi.org/10.5281/zenodo.23751220)
 
 ## License
 

@@ -2,6 +2,8 @@
 
 ## v2.8 — 2026-10-28
 
+- Zenodo DOI for v2.8: 10.5281/zenodo.23751220 (GitHub release v2.8, 2026-10-28; record published 2026-10-29 UTC). README (EN/RU) and CITATION.cff now cite it.
+
 - **Dual licence (T103, 2026-10-28)** — the author's decision: text and
   method stay under CC BY 4.0 (BY-ND not adopted); code is licensed under
   Apache-2.0. Added `LICENSE-CODE` (the canonical Apache License 2.0
