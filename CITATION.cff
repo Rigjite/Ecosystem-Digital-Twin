@@ -1,14 +1,14 @@
 cff-version: 1.2.0
 message: "If you use this skill, please cite it as below."
-title: "Ecosystem Digital Twin — Agent Skill"
+title: "Ecosystem Digital Twin by Rigjita Baldanova — Agent Skill"
 type: software
 authors:
   - family-names: Baldanova
     given-names: Rigjita
     orcid: "https://orcid.org/0009-0009-7891-7007"
-version: "2.7"
+version: "2.8"
 doi: 10.5281/zenodo.23681769
-date-released: "2026-10-26"
+date-released: "2026-10-28"
 license: CC-BY-4.0
 repository-code: "https://github.com/Rigjite/Ecosystem-Digital-Twin"
 abstract: >-
@@ -18,7 +18,9 @@ abstract: >-
   rules: data quality gate, trend tests, calibration against naive baselines,
   alert bands, uncertainty budgets, a pre-registered forecast registry,
   sensitive-species coordinate generalization, and RO-Crate 1.1 provenance
-  packages.
+  packages. Text and method are licensed under CC BY 4.0 (LICENSE); the
+  code (Python files in scripts/, tests/ and examples/, and the CI
+  workflow) under Apache-2.0 (LICENSE-CODE).
 keywords:
   - agent-skill
   - digital-twin

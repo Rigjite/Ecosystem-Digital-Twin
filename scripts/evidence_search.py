@@ -27,7 +27,7 @@ import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
 
-UA = "ecosystem-digital-twin/2.7 evidence-search"
+UA = "ecosystem-digital-twin/2.8 evidence-search"
 TIMEOUT = 25
 
 
