@@ -1,15 +1,15 @@
 ---
 name: ecosystem-digital-twin
-description: "An Agent Skill for designing and operating evidence-bound digital twins and linked twin networks of ecosystems (ponds, lakes, rivers, agricultural land, air basins, and biodiversity sites). Guides the 7-stage build cycle (Phases 0–6), enforces strict separation between AI agents and deterministic code, implements counterfactual baselines, safety gates for circular-economy cascades, Value of Information (VoI) assessment, and RO-Crate provenance. Use when modeling an ecosystem, linking multi-ecosystem cascades, analyzing monitoring data, or evaluating environmental and agricultural intervention scenarios."
+description: "An Agent Skill for designing and operating evidence-bound digital twins and linked twin networks of ecosystems — ponds, lakes, rivers, wetlands, steppe and grassland, cropland, livestock farms, aquaculture, forests, peatlands, marine and coastal waters, urban ecosystems, deserts, tundra and cryosphere, air basins, and biodiversity sites. Guides the 7-stage build cycle (Phases 0–6), enforces strict separation between AI agents and deterministic code, implements counterfactual baselines, safety gates for circular-economy cascades, Value of Information (VoI) assessment, and RO-Crate provenance. Use when modeling an ecosystem, linking multi-ecosystem cascades, analyzing monitoring data, or evaluating environmental and agricultural intervention scenarios."
 license: CC-BY-4.0
-compatibility: "Bundled scripts need only Python 3.9+ and its standard library. scripts/evidence_search.py needs network access to PubMed, Europe PMC, OpenAlex, and Crossref. Open data (Copernicus Sentinel, Landsat, GBIF, ERA5, SoilGrids, national hydrology and meteo services) is fetched at build time with whatever access the environment has; GIS tooling (QGIS, geopandas) is optional."
+compatibility: "Bundled scripts need only Python 3.9+ and its standard library. scripts/evidence_search.py needs network access to PubMed, Europe PMC, OpenAlex, and Crossref. Open data (Copernicus Sentinel, Landsat, GBIF, ERA5, SoilGrids, national hydrology and meteo services) is fetched at build time with whatever access the environment has; GIS tooling (QGIS, geopandas) is optional; scripts/fetch_satellite.py needs network access to the Planetary Computer STAC API (search: no key; downloads: signed URLs)."
 metadata:
-  version: "2.7"
+  version: "2.8"
   skill-author: Rigjita Baldanova
-  last-reviewed: "2026-10-26"
+  last-reviewed: "2026-10-28"
 ---
 
-# Ecosystem Digital Twin — Agent Skill (v2.7)
+# Ecosystem Digital Twin by Rigjita Baldanova — Agent Skill (v2.8)
 
 An Agent Skill for designing and operating evidence-bound digital twins and
 networks of linked digital twins across aquatic ecosystems (lakes, ponds,
@@ -19,8 +19,10 @@ built with this skill is a living, observation-synchronized model of a real
 object (or a conceptual pre-project in silico proposal explicitly labeled as
 such). It diagnoses current states, warns early of non-linear shifts, and
 evaluates environmental and economic interventions against a counterfactual
-baseline before physical implementation. Current version: 2.7 (2026-10-26).
+baseline before physical implementation. Current version: 2.8 (2026-10-28).
 License: CC BY 4.0.
+
+New in v2.8: the indicator catalogue (`references/indicators.md`) grows by twelve new sections §21–§32 — §21 Cryosphere and mountain hazards, §22 Steppe and natural grassland, §23 Livestock farm, §24 Peatlands and bogs, §25 Marine and coastal, §26 Urban ecosystems, §27 Aquaculture, §28 Desert and arid lands, §29 Tundra and polar, §30 Forest, §31 Cropland, §32 Non-peat wetlands and marshes — each with its indicator table, its §20 watch-level application, its scope boundary, and a quick set in §18 (226 new table rows: 163 new indicators plus 63 cross-references to existing sections). Worked examples for the twelve sections and their full source lists live in `references/worked-examples-new-sections.md` and `references/sources-new-sections.md`. Threshold anchors are applied in `references/thresholds.md` (21 indicators, 7 jurisdictions; [provisional] values kept flagged). Detail: CHANGELOG.md.
 
 ## Professional stance
 
@@ -60,8 +62,14 @@ its primary source before it is used, whatever the builder's experience.
    transfer to the receiving ecosystem is gated by an explicit Safety &
    Standards Gate (Compliance Confirmed? -> Yes / No). Until laboratory
    verification confirms compliance for heavy metals, toxins (e.g.
-   microcystins), and pathogens, the baseline pathway defaults to safe
-   containment.
+   microcystins), PFAS, microplastics, and pathogens, the baseline pathway
+   defaults to safe containment.
+
+Two gap markers, different things: [НЕТ ДАННЫХ] — a parameter unmeasured
+in this build; it goes to the [НЕТ ДАННЫХ] register and blocks any flow
+that needs it. [NEXT DATA] — a gap in the catalogue with a named next
+source; it is a research task, not a value, and nothing is estimated to
+fill it.
 
 ## The 7-Stage Operational Cycle (Phases 0–6)
 
@@ -92,8 +100,19 @@ with its reason — a Tier S build is a smaller twin, not a sloppier one.
   spatial boundaries, the core management question, regulatory thresholds
   (e.g. WHO, national ambient water/soil standards), maturity level, and
   trophic/pollution indices (WPI, Carlson TSI, HPI, OECD thresholds).
+  Threshold anchors are set per `references/thresholds.md`: jurisdiction law
+  first, then WHO, then literature, then the object's own baseline; the
+  stricter binding standard governs red, guidance and drafts stay yellow; one threshold per use, with an operational
+  early-warning level below the regulatory limit. Where no binding standard
+  exists for a matrix, the threshold is chosen by this hierarchy and fixed
+  in the Object Passport before data arrives; it becomes red for this
+  build (see the Safety Gate below).
 - **Stage 2 — Data Inventory & QC (Phase 1):** Aggregate satellite remote
-  sensing (e.g. Sentinel-2 water transparency/SDD), in-situ hydrochemical /
+  sensing (scene list and NDVI via `scripts/fetch_satellite.py --check` —
+  the script returns scenes and NDVI, not water transparency/SDD; SDD
+  comes from in-situ measurement or a named SDD product; Planetary
+  Computer downloads need the asset URL signed through the data API),
+  in-situ hydrochemical /
   soil samples, and literature baselines. Screen time series with
   deterministic quality control (`scripts/qc_series.py`). Never interpolate
   across gaps silently. Incoming files move through three zones, never
@@ -208,11 +227,14 @@ with its reason — a Tier S build is a smaller twin, not a sloppier one.
   model disagreement (`scripts/uncertainty_budget.py sampling-priority`):
   where the models disagree most, the twin samples next. Every twin also ships a public status line
   (`assets/templates.md` §10) — one paragraph in plain language: current
-  state, what changed, the maturity label, the [НЕТ ДАННЫХ] gaps —
+  state (green / yellow / red), what changed, the recommendation in plain
+  words, the maturity label, the [НЕТ ДАННЫХ] gaps —
   generated from the runner's summary JSON; it is for the client and the
   public, distinct from the handover note (for a successor builder,
   technical) and from RO-Crate (for machines). Final authority to approve interventions or
-  investment proposals rests strictly with the human specialist.
+  investment proposals rests strictly with the human specialist. The twin is
+  decision support, not a replacement for the decision-maker (ЛПР) —
+  `references/thresholds.md` §9.
 - **Stage 7 — Monitoring & Twin Updating (Phase 4 & 6):** Assimilate new
   observations to reject incompatible ensemble members and narrow forecast
   uncertainty, recompute alert bands (`scripts/alert_bands.py`), and update
@@ -398,6 +420,24 @@ conditioner) crosses ecosystem boundaries:
   [Подтверждено / НЕТ ДАННЫХ / Превышение] (HPI = ...)
 - Контроль органических токсинов и цианотоксинов (микроцистины и др.):
   [Подтверждено / НЕТ ДАННЫХ / Превышение]
+- Контроль PFAS (пер- и полифторалкильные вещества): [Подтверждено /
+  НЕТ ДАННЫХ / Превышение] — значения в `references/thresholds.md`
+  §1.8 (проверено 2026-10-28), по матрице. Правило шлюза:
+  обязательный норматив — красный уровень, превышение блокирует
+  поток; ориентир или проект оценки — жёлтый уровень, раннее
+  предупреждение без блокировки; если обязательного норматива для
+  матрицы нет, порог выбирается по иерархии Этапа 1 и фиксируется
+  в паспорте объекта ДО получения данных — он становится красным
+  для этой сборки; отсутствие измерения ([НЕТ ДАННЫХ]) блокирует
+  поток всегда. Нормы питьевой воды в нг/л к твёрдому осадку в
+  мкг/кг НЕ применимы.
+- Контроль микропластика: [Подтверждено / НЕТ ДАННЫХ / Превышение] —
+  числового норматива не изобретается: шлюз проверяет метод
+  (гармонизированный метод отбора назван, диапазон размеров, идентификация
+  полимера, контрольные пробы) и заявленную нагрузку (частиц/кг или
+  частиц/л с диапазоном размеров). Поток блокируется, когда метод не
+  назван, контрольные пробы не прошли или нагрузка не измерена
+  ([НЕТ ДАННЫХ]).
 - Санитарно-микробиологический и фитопатогенный контроль: [Подтверждено /
   НЕТ ДАННЫХ / Превышение]
 - Вердикт шлюза (Compliance Confirmed?): [YES — Допуск к внесению | NO —
@@ -405,34 +445,11 @@ conditioner) crosses ecosystem boundaries:
 
 ## Deterministic Script I/O Schemas
 
-All scripts use only the Python standard library, read CSV (comma,
-semicolon, or tab; decimal commas accepted) or JSON, print a JSON record,
-and never edit their inputs (`scripts/registry.py` only appends to its
-registry). Exit codes: 0 done or gate passed, 2 input error, 3 gate failed.
-Run any of them with `--help`.
-
-`scripts/trend_test.py` accepts both CSV time series and JSON payloads
-(for `--mode trend` | `wpi` | `tsi` | `hpi` | `hq` | `drift`); the table
-below gives the exact input and output of each script.
-
-| Script | Input | Output |
-|---|---|---|
-| `scripts/qc_series.py` | CSV series (time + value columns); flags `--min` / `--max` / `--max-rate` / `--stuck-run` / `--max-gap-hours` | JSON summary: `rows`, `rows_flagged`, `rows_ok`, `flag_counts`, `gaps`, `neighbor`, `change_point`, `gate`; flagged rows written to `--out` CSV with a `qc_flag` column; values never edited |
-| `scripts/trend_test.py` | CSV (time/value columns) or JSON `{"values": [float], "timestamps": [float or ISO], "alpha": 0.05}`; `--mode trend` (default) \| `wpi` \| `tsi` \| `hpi` \| `hq` \| `drift`; index modes take JSON | Trend (CSV): per-segment `S`, `var_S`, `Z`, `p_value`, `sen_slope_per_year`, `direction`. Trend (JSON): `s_stat`, `var_s_raw`, `hamed_rao_factor`, `z_corrected`, `p_value`, `theil_sen_slope`, `trend`: `"increasing"` \| `"decreasing"` \| `"no trend"`. `wpi`: `wpi`, `n`, `class`, `terms`. `tsi`: `tsi_sd`, `tsi_chl`, `tsi_tp`, `tsi_composite`, `class`. `hpi`: `hpi`, `critical`, `threshold` (100), `terms`. `hq`: `hi`, `hi_acute`, `hi_chronic`, `unsafe`, `threshold` (1), `terms`. `drift` (`--baseline <calibration.csv>`, `--drift-threshold` default 2.0): `drift_level`, `trend_fires`, `trigger`, `action` (`"recalibrate"` \| `"no action"`); exit 0 report, 2 input error |
-| `scripts/skill_scores.py` | CSV; subcommands `continuous` (obs/sim columns + `--train-end`) / `events` / `brier` / `revalidate` (combined series + original `--train-end`) / `alert-trial` (kind/relevant rows: alerts + critical events) / `admit` (JSON dossier: variables + parameters with bounds) / `skill-horizon` (lead/obs/sim/naive rows: per-lead SS_RMSE + skill horizon) / `nudge` (recent obs/sim pairs + `--forecast`: bias-corrected forecast) | JSON metrics: `bias`, `pbias`, `mae`, `rmse`, `nse`, `kge`, `skill_vs_persistence`, `skill_vs_climatology`, `ss_rmse`, `ss_rmse_vs_climatology`; `admission_verdict`: `"ADMITTED"` \| `"REJECTED_BELOW_BENCHMARK"` (null for in-sample fits); `gate` pass/fail. `revalidate` adds a `revalidation` block (`status`, `transition`, `revoked`, `maturity_action`): SS_RMSE ≤ 0 on the new hold-out revokes ADMITTED (exit 3) and drops the maturity label. `alert-trial` reports `precision`, `miss_rate`, `alarm_volume`, `verdict` (PASS/FAIL/INCONCLUSIVE_QUIET_WINDOW; a window with no alerts and no critical events is INCONCLUSIVE_QUIET_WINDOW — it neither admits nor rejects, and admission waits for a synthetic stress-test or a historical extreme replay). `admit` reports `verdict` (ADMITTED/REJECTED) with the offending PRIMARY variable or parameter named; SS_RMSE > 0 is required only for primary variables (flagged `primary` in the dossier; when no variable carries the flag, every variable is primary). `skill-horizon` reports `per_lead` (SS_RMSE per lead) and `skill_horizon` (longest lead beating persistence, null when the shortest lead fails). `nudge` reports `mean_residual`, `raw_forecast`, `nudged_forecast` |
-| `scripts/sensitivity_screen.py` | Python model file defining `run(params: dict) -> float` + params JSON (`{"parameters": [{"name", "value", "perturb" (fraction in (0, 1)) \| "range": [lo, hi]}]}`); `--metric` (default `output`), `--out` | JSON: `metric`, `baseline` (output at the declared values), per-parameter `value`, `perturbed_values`, `outputs`, `abs_change`, `rel_change` (null when the baseline is 0), `rank` (by relative change; baseline-0 rows rank by absolute change below the ranked ones); `rule` (calibrate only the influential parameters) and `limit` (one-at-a-time misses interactions, unlike Sobol indices); exit 0, 2 input error |
-| `scripts/alert_bands.py` | CSV series + `--amber` / `--red` bands, `--anchor`, `--window-hours`; `--explained-by <driver.csv>` + `--driver-amber` / `--driver-red` (a breach the driver explains is logged, not alerted); `--class-thresholds FILE` (CSV class, limit) maps the latest value and the episode peak to one verdict per decision-maker class | JSON: `indicator`, `status`, `observations_used`, `observations_ignored`, `alerts` (band, observed extreme, start, end, elapsed hours, anchor, recommended check), `explained_breaches` (with the driver episode that explains them), `class_thresholds` (limit, latest/peak within, `can_operate`), `unsustained_breaches` |
-| `scripts/generalize_coords.py` | CSV occurrences + sensitivity category | Generalized CSV (coordinates rounded, `footprintWKT`, locality fields blanked); `--check` prints a JSON verdict |
-| `scripts/registry.py` | Subcommands `issue` / `resolve` / `replay` / `promote` / `verify` / `score` on a JSONL registry; `issue` accepts `--cadence daily` \| `weekly` \| `seasonal` \| `event-driven` and `--lead-time` (value) with `--lead-time-unit hours` \| `days` \| `weeks` (default `days`); `--clearance "asset:threshold,..."` records per-asset clearance (threshold − forecast value); `promote` records a signed promotion (promoted by, on, evidence) moving a model from exploratory to operational | JSON records with a SHA-256 hash chain (`prev_hash`, `hash`); `verify` exits 3 on any tampering or any invalid `cadence` / `lead_time` / `clearance` value |
-| `scripts/forecast_bulletin.py` | Registry JSONL (`--registry`) + forecast id (`--id`) + observations CSV (time, value columns; decimal commas accepted) + optional `--amber` / `--red` bands (e.g. `>=25`) | One-page dated Markdown bulletin (stdout or `--output` file): observed value today, forecast value with interval, watch status of the latest observation and the forecast, the scoring date (horizon end) and the verification metric; exit 0 when written, 2 on input error (missing file, unknown forecast id, a record that is not a forecast, missing time/value columns, no observations, an unparsable band, bands pointing different ways, or a red band inside the amber band) |
-| `scripts/drift.py` | Release points CSV (`id`, `lat`, `lon`) + current field CSV (`time`, `u`, `v` in m/s) + target zones CSV (`zone`, `lat_min`, `lat_max`, `lon_min`, `lon_max`); `--step-hours` / `--max-hours` / `--leeway` / `--wind-u` / `--wind-v` | JSON: per zone `arrivals`, `connectivity` (fraction of released particles arriving), `median_travel_hours` (null when none arrives); per particle `arrived_zone` and `travel_hours` (null when it never arrives) |
-| `scripts/scenario_generate.py` | Driver series CSV (time + value columns); `--n` seeded series, `--seed`, `--out` (required), `--watch` (band spec, e.g. `>=25`) | CSV of N+1 columns (input + N scenario draws, every value labelled a scenario draw) + JSON summary: fitted mean, SD, lag-1 autocorrelation, seed, breach share with `--watch` |
-| `scripts/diversity.py` | Subcommands `indices` (counts CSV: species, count; `--taxonomy` CSV: species, genus, family, order, class, phylum) / `pft` (cover/count CSV: species, cover; `--pft-table` CSV: species, pft, pathway, source) | JSON: `richness`, `total`, `shannon`, `pielou`, `delta_plus` (null with fewer than two taxa with taxonomy), `per_species`; `pft` reports `shares_by_pft` and `shares_by_pathway` |
-| `scripts/trait_match.py` | Trait table CSV (taxon + trait columns: numeric, or "x" for indifferent) + `--conditions` JSON ({trait: {mode `at_least` \\| `within`, value, window?}}) | JSON: `fits` (taxa meeting every condition), `fails` (taxon + the failed conditions with values on both sides), `indifferent` (taxa not excluded by a condition on a trait the source marks "x") |
-| `scripts/build_manifest.py` | Build-index JSON (`name`, `datasets`, `models`, `steps`, `outputs`, `mappings`; optional `doi`) | `ro-crate-metadata.json` (RO-Crate 1.1) with FAIR Signposting entries (`cite-as` / `describedby` / `license`) on the Root Dataset + one MappingSet File per `mappings.csv` + validation report |
-| `scripts/evidence_search.py` | Query string; `--limit` | Normalized JSON records from PubMed, Europe PMC, OpenAlex, Crossref |
-| `scripts/uncertainty_budget.py` | CSV ensemble (`output`, `source`, `member`, `value`) | JSON budget: variance, standard deviation, and share per source; median + percentile interval from the joint ensemble only. Subcommand `sampling-priority` (targets CSV: target + model/naive or model_a/model_b) ranks the next sampling targets by \|model − naive\| descending and names the top target to sample next |
-| `scripts/mismatch.py` | Two CSVs (`--observed`, `--modeled`: `cell`, `value` 0/1, the same cell set); with `--register FILE`, `--id`, `--cause` and `--confirm-measurement` are required (the cause may be the literal `[НЕТ ДАННЫХ]`) | JSON: `n_cells`, `n_observed`, `n_modeled`, `extent` (fraction of observed positives correctly predicted; null when no observed positives), `hits`, `misses`, `false_alarms`, `rule`; with `--register`, the entry is appended to the JSON-lines register; exit 0, 2 input error (differing cell sets, a value other than 0/1, an empty table, a missing register field) |
+All scripts use only the Python standard library, read CSV or JSON, print
+a JSON record, and never edit their inputs (`scripts/registry.py` only
+appends to its registry). Exit codes: 0 done or gate passed, 2 input
+error, 3 gate failed. The full per-script input/output table lives in
+`references/scripts.md` (17 scripts, including `scripts/fetch_satellite.py`).
 
 ## Multi-Agent Governance
 
@@ -452,7 +469,12 @@ anonymized summaries without raw sensitive client data.
   option card, scenario card, forecast registry entry, focus application,
   what-if scenario, forecast bulletin, public status line, decision product,
   mismatch register entry).
-- `references/indicators.md` — the 19-section tiered indicator catalogue.
+- `references/indicators.md` — the 32-section tiered indicator catalogue.
+- `references/scripts.md` — deterministic script I/O schemas: the full per-script input/output table (17 scripts).
+- `references/thresholds.md` — threshold-anchor source guide: 21 indicators, 7 jurisdictions (WHO, EU, USA, Russia, Japan, Germany, Denmark); anchor hierarchy, thresholds by use, operational early-warning level; [provisional] values kept flagged.
+- `references/worked-examples-new-sections.md` — worked examples for the twelve new sections §21–§32, carried over verbatim from the module drafts.
+- `references/sensor-registry.md` — full sensor registry: every open source mapped to the ecosystems and indicator rows it serves, in four tiers (Core, Conditional, Research, Context-only).
+- `references/sources-new-sections.md` — full source lists behind §21–§32, with verification status.
 - `references/analytics-forecasting.md` — history rescue, pattern memo,
   event catalogue, predictability audit.
 - `references/uncertainty-decision.md` — uncertainty method ladders,
@@ -473,5 +495,5 @@ anonymized summaries without raw sensitive client data.
 
 ## Citation
 
-Baldanova, R. (2026). Ecosystem Digital Twin — Agent Skill (Version 2.7).
+Baldanova, R. (2026). Ecosystem Digital Twin by Rigjita Baldanova — Agent Skill (Version 2.8).
 https://github.com/Rigjite/Ecosystem-Digital-Twin

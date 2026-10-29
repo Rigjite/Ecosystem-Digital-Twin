@@ -1,7 +1,7 @@
-# Ecosystem Digital Twin — Agent Skill
+# Ecosystem Digital Twin by Rigjita Baldanova — Agent Skill
 
 [![tests](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml/badge.svg)](https://github.com/Rigjite/Ecosystem-Digital-Twin/actions/workflows/tests.yml)
-![version 2.7](https://img.shields.io/badge/version-2.7-blue)
+![version 2.8](https://img.shields.io/badge/version-2.8-blue)
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
@@ -20,7 +20,9 @@ touches the real system. It serves two uses, in this order: a **consulting
 product** for a client (a farm, a water-body manager, a conservation project,
 a municipality) and a **research instrument** for the operator's own science.
 
-Current version: **2.7** (2026-10-26). License: CC BY 4.0.
+Current version: **2.8** (2026-10-28). License: CC BY 4.0.
+
+The brand name is to be decided by the author; until then the skill is named descriptively, “Ecosystem Digital Twin by Rigjita Baldanova”.
 
 ## Ecosystems covered
 
@@ -33,6 +35,18 @@ Current version: **2.7** (2026-10-26). License: CC BY 4.0.
 - **Biodiversity and flora–fauna conservation.** Diversity indices (Shannon, Pielou, Clarke–Warwick Δ+), functional-type shares, and trait matching — with sensitive-species coordinates generalized to the 0.1° grid per GBIF practice before anything is shared. Example: Khubsugul lakeshore birds, Mongolia (synthetic records; real IUCN sensitivity categories).
 - **Contaminated soils.** Hazard assessment (hazard quotient / hazard index) and the circular-economy Safety Gate: waste or sediment from one ecosystem becomes an input to another only when laboratory verification confirms compliance. The worked proof is the cascade (polluted water body → sludge treatment node → agricultural field); there is no standalone soil gallery miniature yet.
 - **Linked multi-ecosystem cascades.** Twin networks in which the output of one ecosystem is the input of the next, with twin-to-twin notifications, trigger–action–response plans, and the Safety Gate on every transfer. Example: the cascade design and the Beira decision arithmetic (the wetland option).
+- **Cryosphere and mountain hazards.** Slope displacement by InSAR, glacier velocity and lakes, moraine-dam freeboard, permafrost temperature — the upstream hazard panel for valleys below. Catalogue section §21; no gallery miniature yet.
+- **Steppe and natural grassland.** Vegetation composition and PFT shares, stocking rate against carrying capacity, SOC in steppe soils, virgin-steppe conversion, and the SDG 15.3.1 degraded-land composite. Catalogue section §22; no gallery miniature yet.
+- **Livestock farms.** Pasture condition, farm N/P nutrient balance, slurry storage and freeboard, manure application, ammonia and methane fluxes. Catalogue section §23; no gallery miniature yet.
+- **Peatlands and bogs.** Peat depth and carbon stock, water-table depth in peat, ditch density, Sphagnum cover, rewetting state, peat fire. Catalogue section §24; no gallery miniature yet.
+- **Marine and coastal waters.** Sea-surface temperature and marine heatwaves, Degree Heating Weeks and bleaching alerts, salinity gradients, ocean acidity, coral, mangrove and seagrass state, shoreline change. Catalogue section §25; no gallery miniature yet.
+- **Urban ecosystems.** Heat-island intensity, impervious-surface share, sewer overflows, green space per capita and accessibility, tree-canopy equity, noise and light exposure, urban metabolism. Catalogue section §26; no gallery miniature yet.
+- **Aquaculture.** Dissolved oxygen and ammonia inside the production unit, mortality and disease, feed conversion, effluent nutrient loads, escapes, benthic impact beneath cages. Catalogue section §27; no gallery miniature yet.
+- **Desert and arid lands.** Aridity index and seasonal water balance, soil-adjusted vegetation cover read against rainfall, biocrust, salinisation, dust storms, oasis water and grove condition. Catalogue section §28; no gallery miniature yet.
+- **Tundra and polar regions.** Vegetation composition and shrubification, active-layer thickness, thermokarst, tundra soil carbon, rain-on-snow icing, caribou and lemming cycles, coastal erosion. Catalogue section §29; no gallery miniature yet.
+- **Forest.** Forest extent and net area change, primary and old-growth share, biomass and soil carbon stocks, net carbon flux (sink or source), harvest against the allowable annual cut, forest loss by driver, pest and disease outbreaks, fragmentation, regeneration, deadwood. Catalogue section §30; three gallery miniatures (forest-carbon, forest-fire, forest-logging) already exist.
+- **Cropland.** Cropland extent and net area change, rotation diversity and fallow, tillage system, SOC under tillage, irrigation water use and efficiency, salinisation, fertiliser N/P balance and N₂O, pesticide pressure, yield and yield stability, erosion on arable land, field margins, rice-paddy water regime and methane. Catalogue section §31; no gallery miniature yet.
+- **Non-peat wetlands and marshes.** Wetland extent and net area change, hydroperiod and water-level regime, salinity regime, vegetation composition, sediment accretion against sea-level rise, nutrient retention, waterbird use, fish nursery function, invasive reed and cattail expansion, drainage and reclamation pressure. Catalogue section §32; no gallery miniature yet.
 
 ## Keywords
 
@@ -177,18 +191,23 @@ threshold or fails to beat a naive baseline.
 | `examples/beira/` | Worked example on a real lake (Beira Lake, Colombo) from published data only: state vs thresholds, cross-check with independent studies, a source check, decision arithmetic for wetlands, value of a sludge analysis, a registered trial forecast, and the data gaps |
 | `scripts/` | The calculation toolkit above |
 | `tests/test_scripts.py`, `tests/check_package.py` | Unit and end-to-end tests of the scripts; the package lint |
-| `tests/TESTS.md` | Behavioral and automated tests (T1–T80), traceability table, run log |
+| `tests/TESTS.md` | Behavioral and automated tests (T1–T100), traceability table, run log |
 | `CHANGELOG.md`, `CITATION.cff` | Version history; citation metadata |
 
 </details>
 
 ## Status and evaluation
 
-- **Automated:** 227 unit and end-to-end tests plus the package lint run on
+- **Automated:** 343 unit and end-to-end tests plus the package lint run on
   every push (see the tests badge). Run them locally with
   `python3 -m unittest discover -s tests` and `python3 tests/check_package.py`.
 - **Evaluation history:** every round, its scores, and the defects found and
   fixed are logged in [`tests/TESTS.md`](tests/TESTS.md).
+- **Scope:** the skill is the method and guard-rail layer of a twin. It
+  governs data quality, model admission against naive benchmarks,
+  pre-registered forecasts, safety gates, and provenance. It does not yet
+  ship a process model with data assimilation; that core is planned for
+  version 2.9.
 - **Not yet done:** the behavioral tests have not been run on a live water
   body or site. That pilot is the next milestone, and the run log says so.
 
@@ -196,8 +215,11 @@ threshold or fails to beat a naive baseline.
 
 - Pilot build on a real water body with open data; run the behavioral tests
   live and publish the run log.
-- Independent cross-vendor evaluation round of version 2.7.
-- Data-access helpers: GBIF downloads with citable DOIs, Sentinel-2 via STAC.
+- Version 2.9: a process-model core with data assimilation (ensemble
+  Kalman filter or particle filter); a gate-threshold check script with
+  the threshold hash-chained in the forecast registry; a bootstrap
+  interval for SS_RMSE; a deseasonalised drift test.
+- Data-access helpers: GBIF downloads with citable DOIs.
 - Export of the forecast registry in the Ecological Forecasting Initiative
   output and metadata standard.
 
@@ -207,7 +229,7 @@ Issues and suggestions are welcome.
 
 Use GitHub's **Cite this repository** button (from [`CITATION.cff`](CITATION.cff)), or:
 
-Baldanova, R. (2026). *Ecosystem Digital Twin — Agent Skill* (v2.7).
+Baldanova, R. (2026). *Ecosystem Digital Twin by Rigjita Baldanova — Agent Skill* (v2.8).
 <https://github.com/Rigjite/Ecosystem-Digital-Twin>\
 DOI: [10.5281/zenodo.23681769](https://doi.org/10.5281/zenodo.23681769)
 

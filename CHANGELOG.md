@@ -1,5 +1,582 @@
 # ecosystem-digital-twin — Changelog
 
+## v2.8 — 2026-10-28
+
+- **Release edits (T102, 2026-10-28)** — Claude Anthropic, on the
+  author's go-ahead to publish. (1) Release date set to 2026-10-28 in
+  README (EN/RU), CITATION.cff and this file, matching SKILL.md. (2) DOI
+  in README (EN/RU) and CITATION.cff moved off the v2.3 record
+  (10.5281/zenodo.23657185) to the latest minted record, v2.7
+  (10.5281/zenodo.23681769); the v2.8 DOI follows the release, as with
+  earlier versions. Test fixtures for build_manifest.py keep their
+  sample DOI. (3) `references/thresholds.md` status header and closing
+  line: candidate and "not applied to v2.7" wording removed; licence
+  line states CC BY 4.0 (the BY-ND proposal was not adopted).
+  (4) README (EN/RU): scope line added under Status — the skill is the
+  method and guard-rail layer of a twin and does not yet ship a process
+  model with data assimilation (planned for v2.9); roadmap updated
+  (v2.7 cross-vendor round done; Sentinel-2 via STAC done as
+  fetch_satellite.py; v2.9 items listed). (5) Brand line made neutral
+  and identical in both READMEs (the EN and RU lists of candidate names
+  disagreed). New test T102 (`TestReleaseV28`, 4 tests).
+
+- **Independent verification follow-up (T101, 2026-10-28)** — Muse's
+  verification of the T100 build against primary sources (336 tests,
+  strict lint PASS, catalogue 413 rows re-counted). Confirmed: Norway
+  § 25 «Tetthet» (current Lovdata text FOR-2008-06-17-822 — T99's §19
+  cited the 1998 regulation's translation, not the 2008 regulation);
+  USDA ERS RCS-26H confirms the 3.7 Mt record only, its FAS-circular
+  pointer sits in the Bangladesh paragraph; Danube fish split (about 90
+  MAB, 45 freshwater WH documentation); GEPIS ratio about one and a
+  half (5.5–6.2 vs DCS 3.7–4.1 t/ha); IPCC Table 2.1 splits temperate
+  grassland by nutrient status and drainage depth (5.3 / 6.1 / 3.6),
+  no cool/warm split — T99's "6.1 warm temperate" gloss was the
+  FAOSTAT/ESSD simplification (the row values were already right).
+  Corrections to the T100 record: (1) DCS yields restored as verified
+  — read directly from the primary DCS Paddy Statistics table by Muse
+  in T99 (2022/23 Maha 3,731; 2023 Yala 4,128 kg/ha); T100's "site
+  blocks automated access" records Claude's access limit, not the
+  verification state. (2) Laksvel 'very high' IS in the protocol —
+  §4.3: "This must be described as very high" for the >2% monthly
+  mortality case; the row's four colour levels stand, the descriptor
+  is omitted as redundant with the level name, and the T100 rationale
+  is corrected. (3) T100 test count corrected 5 → 6; the stale T99
+  test-class docstring (USDA FAS circular, Norway §19, Danube 5,500
+  as "verified and closed") updated to the T100-corrected state.
+  Figures still not read from a primary document: Todgerel 2020
+  (secondary citation), the USDA area and yield (trade press), the
+  Danube 9,581 census count (institute figure via Agerpres, census
+  report not read — disclosed in the source list). New test T101
+  (`TestT100FollowUpOct28`, 3 tests). 339 tests pass; strict lint PASS.
+
+- **T99 follow-up (T100, 2026-10-28)** — Claude's review of the T99 build
+  (9.3/10); fixes applied by Claude at the author's request, so the next
+  cross-check goes to another model. (1) Norwegian density rule: § 25
+  «Tetthet» of akvakulturdriftsforskriften (FOR-2008-06-17-822), read from
+  the regulation's full Norwegian text on FAOLEX (nor82122) — T99's "§19,
+  FAOLEX" is not the paragraph in that text, and the Ecolex/FAOLEX record
+  links no English translation; the T99 test that pinned §19 is repointed.
+  (2) USDA Sri Lanka 2025/26: the ERS Rice Outlook RCS-26H confirms the
+  record 3.7 Mt milled only (area "higher", yield "+10%", no figures; its
+  FAS-circular pointer is in the Bangladesh paragraph), so 1.2 M ha and
+  4.62 t/ha stay trade-press values citing USDA. (3) Danube Delta: the
+  2017 biodiversity census count (9,581 species; about 7,440 in 2008)
+  leads, "over 5,500" kept as an older summary; fish given as about 90
+  (MAB) of which 45 freshwater (UNESCO WHC). (4) Laksvel row: the four
+  colour levels from §4.3; the descriptor 'very high' is not in the
+  protocol and is dropped. (5) GEPIS example: "roughly double the
+  national average" corrected to about one and a half times (DCS
+  3.7–4.1 t/ha). (6) Corrections to the T99 record below: the catalogue's
+  Tier 1 values are those of IPCC 2013 Wetlands Supplement Table 2.1
+  itself, re-read from the IPCC chapter — grassland 5.7 boreal, temperate
+  5.3 nutrient-poor / 6.1 nutrient-rich deep-drained / 3.6 nutrient-rich
+  shallow-drained, 9.6 tropical; the table has no cool/warm temperate
+  split ("6.1 warm temperate" is the FAOSTAT/ESSD simplification), and
+  the pre-T96 wording was not fully correct either, it carried those
+  FAOSTAT labels. Figures still not read from a primary document:
+  Todgerel 2020 (secondary citation), the USDA area and yield (trade
+  press), and the DCS yields (the DCS website blocks automated access;
+  re-read at build time). New test T100 (`TestT99FollowUpOct28`, 6 tests); three T99 tests repointed (Norway, USDA, Danube).
+- **Independent verification (T99, 2026-10-28)** — Muse's independent check of the T97/T98 build against primary sources (323 tests, strict lint PASS, catalogue 413 rows re-counted). Correction to the record: the T96 Tier 1 "fix" was itself wrong — it swapped the cropland and grassland factors on the basis of a garbled FAOSTAT PDF text extraction (a two-column layout collapsed into one); the pre-T96 values were correct. T97 restored them, and T99 verified the assignment against ESSD Table 5 (Conchedda & Tubiello 2020, reproducing the 2013 IPCC Wetlands Supplement Table 2.1): cropland 7.9 t CO₂-C/ha/yr boreal and temperate, 14.0 tropical; grassland 5.7 boreal, 6.1 warm temperate, 9.6 tropical. Verified against primary sources and closed: USDA 2025/26 Sri Lanka record (3.7 Mt milled confirmed by the USDA ERS Rice Outlook RCS-26H, 15 September 2026; area 1.2 M ha and yield 4.62 t/ha rough from the USDA FAS World Agricultural Production circular, September 2026, as quoted in the trade press — arithmetic cross-check 1.2 × 4.62 ≈ 5.5 Mt rough ≈ 3.7 Mt milled); DCS revised paddy yields (2022/23 Maha 3,731; 2023 Yala 4,128 kg/ha); the Laksvel mortality band — monthly mortality above 2% is level 3 (red level), "very high" (Laksvel protocol, Institute of Marine Research, Rapport fra Havforskningen 2025-40, §4.3), with the citation corrected (the protocol is not the Norwegian Veterinary Institute's Fish Health Report 2025); the Danube Delta "over 5,500 species" total (Claudino-Sales 2018); the Norwegian density paragraph confirmed as §19 (FAOLEX English translation; the trade press's §25 is the wrong numbering). Still unverified, and the only figure left so: Todgerel 2020 (secondary citation; the primary document was not consulted). The FAO cropland N-surplus figure stays provisional outside the rows (not a row anchor). New test T99 (`TestIndependentVerificationOct28`, 7 tests). 330 tests pass; strict lint PASS.
+- **Accuracy sweep (T98, 2026-10-28)** — a further check of §21–§32
+  figures against primary sources by Claude, at the author's request
+  (two iterations). Confirmed without change: Taranger et al. 2015 (21 of
+  34 wild populations at moderate-to-high introgression risk), EU
+  2024/1244 (feed-based aquaculture above 500 t; N 50,000 / P 5,000 kg/yr
+  to water; applies from 1 January 2028), Morris et al. 2016 (0.3 cm/yr,
+  now cited from the abstract), ITS_LIVE v2.0 (The Cryosphere
+  19:3517–3533), NYC CSO (398 outfalls, ~18 bn gal/yr), Western Arctic
+  peak (490,000 in 2003, now cited from ADF&G). Corrected: the Everglades
+  slope and remaining extent — the Florida Museum ("less than two inches
+  per mile", "less than half") and the Davis & Ogden overview ("~2.5",
+  "just over half") differ, so the catalogue carries "about 2 inches per
+  mile or less" and "about half" and names both; the Norwegian 25 kg/m³
+  rule cited by title (§19 in the FAOLEX translation, § 25 in trade press —
+  confirm on Lovdata); the copper row given its ASC indicator (4.7.4,
+  below 34 mg/kg dry sediment); Har Us Nuur endemic fish carried as three
+  to five (the Ramsar sheet says both). Structure: the §23 stocking,
+  utilisation and SOC rows reduced to cross-references to §22 plus the
+  farm reading, so the anchors live once; draft wording cleared from the
+  source list. New test T98 (`TestAccuracySweepOct28`, 7 tests); one T89
+  assertion re-worded with the source list. 323 tests pass; strict lint
+  PASS. Not verified in this sweep and left as cited: the Laksvel
+  2%-per-month mortality band and the Danube Delta "over 5,500 species"
+  total.
+- **T96 follow-up (T97, 2026-10-28)** — Claude Anthropic's re-review of
+  the T96 build (8.5/10); fixes applied by Claude at the author's
+  request, so the next cross-check goes to another model. The T96
+  archive failed its own strict lint (a backticked path to the planned
+  gate_check.py script in the v2.9 note below) — now plain text. §24 Tier 1
+  factors set to IPCC Wetlands Supplement Table 2.1 (T96 had exchanged
+  the cropland and grassland values). The source list and the GEPIS
+  worked example synced with the T96 catalogue fixes (Peatland Code v2.1,
+  PDGL 21/25/1, Gutman & Ignatov vs Carlson & Ripley, Western Arctic peak
+  2003, Chen et al. 2021, Rising et al. 2026, FRA 2025 fire on all land,
+  WRI 2024/2025 forest loss, FAO 2024 salt with the 2021 depth split
+  labelled, DCS rice yields, Fluet-Chouinard et al. 2023, the IPCC
+  organic-soil definition). The broken §25 DHW sentence rejoined; the §28
+  depth split labelled FAO 2021; the cryosphere quick set gains glacier
+  mass balance; SKILL.ru.md Stage 1 states the anchor hierarchy and the
+  stricter-binding rule. New test T97 (`TestT96FollowUpOct28`, 7 tests);
+  the T85 yield assertion repointed to the DCS series. 316 tests pass;
+  strict lint PASS. SKILL.md unchanged.
+- **Claude full-candidate review fixes (T96, 2026-10-28)** — Claude
+  Anthropic's 8/10 review of the whole candidate, verified point by point
+  against primary sources before applying (figures taken from the primary
+  sources, not from Claude's report). (1) All 10 accuracy errors in
+  §21–§32 corrected: 47 dangerous glacial lakes by basin (21 Nepal, 25
+  Tibet AR China, 1 India); the IPCC peat definition (organic horizon
+  ≥ 10 cm, ≥ 12% OC; the 40 cm figure is the FAO Histosol equivalence);
+  Tier 1 Table 2.1 factors unswapped and units corrected to t CO₂-C/ha/yr;
+  Peatland Code v2.1 (October 2024) with its real base categories; FVC
+  linear scaling = Gutman & Ignatov (1998), quadratic form = Carlson &
+  Ripley (1997); DOI abf28b re-attributed to Mekonnen et al. 2021;
+  Western Arctic caribou peak ~490,000 in 2003 (ADF&G); fire 261 M ha/yr
+  is all land, about half of it forest; DCS rice yields (2022/23 Maha
+  3,731, 2023 Yala 4,128 kg/ha, revised series); salt 1,381 Mha (FAO
+  2024). (2) Outdated figures updated: tropical primary forest loss
+  3.7 M ha (2023), 6.7 M ha (2024, record), 4.3 M ha (2025, GFW/UMD);
+  wetland loss as a range of estimates (Davidson 64–71% vs
+  Fluet-Chouinard et al. 2023 ~21% since 1700). (3) Unverified figures
+  sourced or removed: USDA 2025/26 figures kept as the September 2026
+  estimate as reported in the trade press, to be checked against the USDA
+  circular; iScience 2026 seagrass, Chen et al. 2021 thermokarst (10.5% /
+  3.4%), Todgerel 2020 figures corroborated via the citing paper, Sci.
+  Rep. 2024 peat rewetting trial — all cited in full; Krasnoyarsk
+  berries and the Selenga manganese clause removed (unsourced /
+  off-row). (4) Structure: §30–§32 brought to the §21–§29 format
+  (watch-levels and does-NOT-do subheads, Conditional module naming);
+  the §31 table closed by a blank line; §18 quick sets completed
+  (forest age structure, basal area, soil carbon; wetland type
+  composition); §19 and README counts fixed; working notes moved here.
+  (5) Duplicates: active-layer thickness cross-referenced to §29;
+  grazing rows cross-referenced with the arid-conditions caveat
+  restored; the mast index no longer drives alerts (the conflict-report
+  series does — the bear strip moved from §20 to §30, reframed); DHW no
+  longer closes shellfish beds; the Beira WPI clause is out of the rice
+  example. (6) Gate qualified: the stricter *binding* standard governs
+  red, guidance and drafts stay yellow (SKILL.md Stage 1, within the
+  existing line; §20). (7) Completeness: glacier mass-balance row (§21)
+  and copper/antifouling row (§27) added. (8) The §22 Daurian example is
+  the second explicit exception to the "no Russian worked examples" rule
+  (her decision of 28 October 2026 — transboundary Landscapes of Dauria,
+  Russian-side data; figures from Buuveibaatar et al. 2024, Oryx, and
+  Bazhenov 2019, Nat. Conserv. Res.). New test T96
+  (`TestTablesClosedOct28`, 4 tests): every table run followed by a blank
+  line, §31 closure regression, 12 + 12 subheads, stricter-binding
+  wording. SKILL.md stays 499 lines; SKILL.ru.md stays 561 lines.
+- **Gate threshold rule fixed; PFAS numbers moved to thresholds.md (T95, 2026-10-28)** —
+  Claude Anthropic's 8/10 review (SKILL.md only), verified point by point,
+  with Claude's own two amendments to the plan. (1) The three-way
+  contradiction is resolved by an explicit rule, not by weakening the
+  gate: a binding standard sets red and blocks; guidance or a draft
+  assessment sets yellow (early warning, no block); where no binding
+  standard exists for a matrix, the threshold is chosen by the Stage 1
+  hierarchy and fixed in the Object Passport BEFORE data arrives, and it
+  becomes red for this build; no measurement ([НЕТ ДАННЫХ]) still blocks
+  the flow. (2) The brand-candidate line is removed from SKILL.md
+  entirely — the candidates (ADIS, AdisECO, AdisTwin, NaranTwin) live
+  here in the CHANGELOG until the author decides; the brand is undecided.
+  PFAS values moved from the gate to `references/thresholds.md` §1.8
+  (checked 2026-10-28; rescission still only proposed as of October 2026;
+  DüMV 100 µg/kg stands, the 2019 Bundesrat recommendation of 30 µg/kg
+  is adoption-unconfirmed; EPA draft wording now follows EPA: risk
+  exceeded in some scenarios — pasture, field, reclamation — at 1 µg/kg);
+  the gate keeps the rule and a pointer. Jurisdictions 5 → 7 (Germany,
+  Denmark added); indicators 20 → 21 (PFAS). Description now names steppe
+  and grassland and aquaculture (both languages). The two gap markers are
+  defined in the skill: [НЕТ ДАННЫХ] = unmeasured in this build (blocks);
+  [NEXT DATA] = a catalogue gap with a named next source (a research
+  task, not a value). Stage 2 now states what `fetch_satellite.py`
+  actually returns (scene list + NDVI, not SDD; Planetary Computer
+  downloads need signed URLs). The "New in v2.8" paragraph keeps the
+  twelve section names the tests pin, minus the brand line. Date updated
+  to 2026-10-28. Two defects found by the suite and fixed in passing:
+  the Stage 1 cross-reference "(see Template 2)" broke the tests' gate
+  split (rewritten as "(see the Safety Gate below)"), and the lengthened
+  compatibility line exceeded the 500-character lint cap (shortened).
+  SKILL.md is now 499 lines — one line under the 500 limit; the next
+  addition must move text out of SKILL.md. New test T95
+  (`TestGateThresholdRuleOct28`, 8 tests); T90 counts updated to 21
+  indicators / 7 jurisdictions / 25 [provisional] marks; T93/T94 repointed
+  to thresholds.md §1.8.
+- **v2.9 scope, extended (2026-10-28)** — the model core (Vollenweider
+  phosphorus balance, EnKF/particle-filter assimilation script),
+  deseasonalised drift, bootstrap intervals for SS_RMSE, Igeo / PLI /
+  Håkanson RI in the safety gate, the Stage/Phase dual numbering, the
+  32-domain scope question, Rule 3 (0.1° floor for all sensitivity
+  categories — a deliberate conservative choice, recorded, not fixed;
+  extreme sensitivity is withheld entirely), and the notation nits
+  ("дрейф" in two senses, β used by both Theil–Sen and KGE, "nudge" as
+  bias correction rather than nudging). Mongol Daguur gazelle and marmot
+  survey search; a planned gate_check.py script (v2.9, not yet written) + a registry hash chain for the
+  gate threshold (so «fixed before data» is provable, not declarative).
+
+- **PFAS gate corrected by matrix and by date (T94, 2026-10-28)** —
+  Claude Anthropic's point (e), verified against the primary sources
+  before applying. (1) Date corrected: the May 2025 wording was wrong —
+  May 2025 was only EPA's announcement of intent; the formal rescission
+  proposal for PFHxS/PFNA/HFPO-DA (GenX)/HI is 20 May 2026 (Federal
+  Register 2026-10085, comments to 20 Jul 2026), not final as of Aug
+  2026, and all six 2024 MCLs remain in force; the PFOA/PFOS compliance
+  extension 2029 → 2031 is proposed, not final. PFHxS/PFNA/GenX/HI are
+  now marked [provisional] in the gate. (2) Matrix corrected: drinking-
+  water ng/L limits do NOT apply to solid sediment in µg/kg. Sediment/
+  sludge anchors added (µg/kg dry weight): Germany DüMV — sum PFOA+PFOS
+  100, labelling above 50 (2008 value); Denmark, Danish EPA 2023,
+  indicative, not binding — PFAS4 15; EPA draft sewage-sludge risk
+  assessment (Jan 2025, draft, not a standard) — risk for highly
+  exposed groups above 1 µg/kg PFOA or PFOS (1 ppb) under 40-year
+  application; several US states use 20 µg/kg PFOS and/or PFOA as
+  interim practice [provisional]. The strictest applicable anchor
+  governs; no jurisdiction anchor means [НЕТ ДАННЫХ] blocks. The
+  microplastics method-gate is unchanged (Claude: the approach is
+  correct; no numeric limit exists for sediment anywhere). The 9 m²
+  green-space closure was confirmed correct by Claude (Italian
+  D.M. 1444/1968, art. 3). New test T94
+  (`TestSafetyGatePfasMatrices`, 4 tests). Claude's points (a)–(d) and
+  the overall score are still open — the archive could not be downloaded
+  by the reviewer; the author is attaching it directly.
+
+- **PFAS and microplastics in the safety gate (T93, 2026-10-28)** — on
+  her word "Да, добавь PFAS и микро пластик". Both were already
+  conditional panels in the catalogue (§6: PFAS panel; microplastics in
+  water, sediment and biota) but were NOT in the circular-economy safety
+  gate — the audit's gap. Added to Non-Negotiable 5 and to Template 2
+  (SafetyGateCard) in SKILL.md and SKILL.ru.md: a PFAS row (jurisdiction
+  limit first — US EPA NPDWR Apr 2024: PFOA 4.0 ng/L, PFOS 4.0 ng/L,
+  PFHxS/PFNA/HFPO-DA (GenX) 10 ng/L each, Hazard Index 1 for mixtures,
+  with the May 2025 EPA retention of PFOA/PFOS and proposed rescission
+  of the other four disclosed; EU Directive 2020/2184: sum of 20 PFAS
+  0.1 µg/L, total PFAS 0.5 µg/L; no universal PFAS limit for
+  sediment/soil — jurisdiction soil limit applies, otherwise
+  [НЕТ ДАННЫХ] blocks) and a microplastics row (no numeric limit
+  invented: the gate checks the harmonized method — named method, size
+  range, polymer identification, blank controls — and the reported load;
+  unnamed method, failed blanks or unmeasured load blocks the transfer).
+  New test T93 (`TestSafetyGatePfasMicroplastics`, 4 tests). Still open
+  from the same audit point: Igeo / PLI / Håkanson RI for sediment and
+  soil in the gate (separate decision).
+
+- **Quick fixes from the external 7.5/10 audit (T92, 2026-10-28)** — the
+  audit was verified against the files before any fix was applied: two
+  of its points were wrong and were NOT applied as written. (1) The
+  HTML comment before the frontmatter is only in SKILL.ru.md, not in
+  SKILL.md — moved below the closing `---` in SKILL.ru.md; SKILL.md
+  frontmatter already started on line 1. (2) No code checks a `[NO DATA]`
+  literal — a search of the whole candidate finds zero occurrences;
+  `scripts/mismatch.py` uses the Russian `[НЕТ ДАННЫХ]`, matching the
+  skill, so nothing was changed there. Applied: (a) the frontmatter
+  `description` rewritten for v2.8 in SKILL.md (725 chars) and
+  SKILL.ru.md (816 chars) — now names forests, peatlands, marine and
+  coastal waters, urban ecosystems, deserts, tundra and cryosphere,
+  cropland and livestock farms alongside the original domains;
+  (b) the Deterministic Script I/O Schemas table moved out of SKILL.md
+  into `references/scripts.md` (31 lines), with a short pointer left in
+  SKILL.md and pointers in both Companion Documents lists — and the
+  missing 17th row added in the move: `scripts/fetch_satellite.py`
+  (the agreed morning fix of 2026-10-27, not yet applied; row written
+  from the script's own `--help` and docstring). SKILL.md is now 469
+  lines (was 491). New test T92 (`TestQuickFixesOct28`, 3 tests).
+  NOT applied here (separate decisions, v2.9 scope): the model core
+  (Vollenweider phosphorus balance, EnKF/particle-filter assimilation
+  script), deseasonalised drift, bootstrap intervals for SS_RMSE, and
+  PFAS / Igeo / PLI / Håkanson RI in the safety gate; the Stage/Phase
+  dual numbering and the 32-domain scope question.
+
+- **Remaining priority [NEXT DATA] gaps verified (T91, 2026-10-28)** —
+  the three priority gaps are closed as verified negative results, not
+  as values; nothing was invented. (1) Beira-local SS_RMSE for Sensors
+  1–4: chlorophyll-a and water temperature exist in the published
+  record only as interpolated supplement maps (Prasad et al. 2024,
+  Figs. S7–S8 and S1–S2), with no per-station numeric table, and the
+  paper never applied NDCI or Landsat surface temperature at Beira —
+  so no local score can be computed from the published record; the
+  water extent is a single surveyed total (about 65.4 ha), not a mask,
+  so no mask accuracy can be derived from it; turbidity was never
+  measured in situ at Beira, so a local score is structurally
+  impossible. Each sensor now states its named next data (the authors'
+  raw per-station values, or a new paired field campaign). One error
+  corrected in passing: the file cited supplement "Figs. S7–S9" for
+  chlorophyll-a, but the supplement list contains only S7–S8 (the main
+  text cites a Figure S9 that is not in the supplement list).
+  (2) Langtang InSAR ground truth: no GNSS or levelling watched the
+  slope; the ICIMOD preliminary synthesis (13 October 2026) and the
+  independent rapid assessment (Roy et al. 2026, J. Indian Soc.
+  Remote Sens., DOI 10.1007/s12524-026-02611-x, published 16 October
+  2026) are satellite-only — NISAR SBAS InSAR and pixel-offset
+  corroboration is cross-sensor agreement, not ground truth — and the
+  pre-collapse deformation can never be scored retrospectively because
+  the slope collapsed. A non-peer-reviewed preprint (Sah 2026,
+  EarthArXiv) finding no precursor in Sentinel-1 amplitude data is
+  recorded as a caution, not as evidence. Next source: a GNSS
+  installation or drone-DEM survey on neighbouring at-risk slopes.
+  (3) Daursky marmot density (ind/ha): still unpublished and still
+  [NEXT DATA] — Bazhenov 2019 gives families and adults, not density
+  per hectare, and no occupied-colony area. Published context added,
+  labelled as not a Daursky value: tarbagan densities across the
+  species' range are 1–7 ind/ha (IUCN Red List species account, Zenodo
+  record 6819035); Hustai National Park comparator ca. 1.27 ind/ha
+  (13,213 marmots on 10,380 ha, Todgerel 2020, as cited in the
+  marmot-decline literature — a secondary citation, to be verified
+  against Todgerel 2020 before use as a value). Next source: the
+  reserve's «Летопись природы» / DIPA joint-expedition counts
+  (families plus occupied colony area). Updated in
+  `references/worked-examples-new-sections.md` (Sensors 1–4, 6, gaps
+  section, Dauria panel), `references/sensor-registry.md` (S1–S4, S6,
+  rows R02–R04, R09, R12, §6), `references/indicators.md` (§22 marmot
+  row, Dauria note, §21 InSAR row — no "[provisional]" used there, per
+  T81), and `references/sources-new-sections.md` (§21 Roy/Sah bullets,
+  §22 marmot addendum, virtual-sensor verification note). New test T91
+  (`TestRemainingNextDataGapsVerified`, 6 tests). SKILL.md unchanged.
+
+- **Thresholds source guide applied (T90, 2026-10-28)** — the draft
+  `~/workspace/ecosystem-twin-thresholds-guide-DRAFT.md` is applied to the
+  candidate as `references/thresholds.md` (358 lines): 20 indicators, 5
+  jurisdictions (WHO, EU, USA, Russia, Japan), with the anchor hierarchy
+  (jurisdiction law → WHO → literature → object baseline; the stricter
+  governs red), thresholds by use (§7: drinking / bathing / irrigation /
+  aquatic life — status by the strictest active use, named on the status
+  line), and the operational early-warning level (§8: yellow at 70–80% of
+  the regulatory limit, red is the limit itself). The body is carried over
+  verbatim from the draft — only the status header and closing line changed
+  — so all 21 [provisional] marks are preserved and stay visible; every
+  [provisional] value must be re-checked against its primary source before
+  it enters an Object Passport as final. Russian lead in drinking water is
+  NOT entered as a value (sources contradict 0.03 vs 0.01 mg/L; §10 item 2).
+  The 14 open items (§10) are kept as [NEXT DATA]. Rules, not per-country
+  values, are wired into the skill: SKILL.md Stage 1 (anchor hierarchy +
+  per-use thresholds + early-warning level), Stage 6 (decision support —
+  the twin shows the picture, the decision and responsibility stay with the
+  decision-maker, ЛПР — `references/thresholds.md` §9), and a Companion
+  Documents pointer (SKILL.md now 491 lines by `wc -l`, 492 by the lint's
+  count, under the 500 limit; same pointer mirrored in SKILL.ru.md);
+  `references/indicators.md` §19 (pointer to the guide) and §20 (three new
+  rules: anchor hierarchy, thresholds by use, operational early-warning
+  level). No per-country value was hard-coded into SKILL.md; no value was
+  invented. New test T90 (`TestThresholdsGuideApplied`, 8 tests). One
+  defect found by the suite and fixed in the round: the §19 pointer first
+  used the word "[provisional]", which T81 forbids in `indicators.md` —
+  reworded to "an anchor flagged in that file stays flagged". Loop score
+  9/10, one round.
+
+- **Both [unverified] flags closed (T89, 2026-10-28, on her word "Заверши 2 пометки")** — no live [unverified] flag remains in the catalogue. (1) §22 marmot-density threshold: closed as a verified negative result — no standardised density threshold exists (IUCN criteria use decline rates, extent and mature-individual counts, not density; the Russian 1983 census guidelines are a survey method). The row now uses the object's own baseline with trend over ≥3 survey rounds; status context: tarbagan Endangered (IUCN A2ad), bobak Least Concern; restoration-design minimum ≥10 families / ≥50 individuals (Enkhsaikhan et al. 2021, Proc. Inst. Biol. 37:30–36, DOI 10.5564/pib.v37i1.3137); plague-risk cut-point 0.63 marmots/ha (Xu et al. 2023, Sci. Rep. 13:11906, DOI 10.1038/s41598-023-38966-1). (2) §26 green space per capita: closed — the 9 m² figure is Italian planning law D.M. 1444/1968 (2 April 1968: 18 m² public space, 9 m² public greenery per inhabitant, new settlements), verified via Land 2024, 13(12):2174; it is not a WHO figure (Czesak & Różycka-Czas 2025, DOI 10.1016/j.landurbplan.2025.105301, searched the cited WHO reports and found it in none; Mostafa & Alshahrani corrigendum 2025, DOI 10.3389/frsc.2025.1542464, 3 April 2025, deleted the WHO attribution). WHO's verified guidance is accessibility — 0.5–1 ha within 300 m (WHO Regional Office for Europe 2017 brief, rule of thumb). Updated in `references/indicators.md` (both rows + §26 note) and `references/sources-new-sections.md` (§22 note, §26 item (a), §26 verification note). The thresholds-guide DRAFT carries no 9 m² claim, so it needed no edit. SKILL.md / SKILL.ru.md carry no mention of either flag, so they are unchanged. New test T89 (`TestUnverifiedFlagsClosed`, 3 tests) + the T81 flag test re-pinned to assert closure.
+
+- **Sensor registry (T88, 2026-10-28)** — `references/sensor-registry.md`
+  (315 lines): every open source in `references/data-sources.md` mapped
+  to the ecosystems (§§1–32) and indicator rows it serves, in four tiers
+  — Core 1, Conditional 35, Research 3, Context-only 20; 59 rows
+  (R01–R59) plus Part A carrying the seven registered virtual sensors
+  verbatim (six named: five Beira, one Langtang — S1–S6 — plus the
+  Object Passport "Virtual sensors" block as the reusable seventh form;
+  no seventh sensor invented). Only one row is Core (R05, Secchi depth
+  at Beira, RMSE 0.049 m, Prasad et al. 2024) — the registry shows, per
+  row, what is measured and what is still only a method. Eight new
+  sources added to `references/data-sources.md` §12 with resolution,
+  cadence, access and measurement-vs-model notes: NASA FIRMS, Global
+  Forest Watch / Hansen (user's accuracy 87.0% for loss), ESA
+  WorldCover (overall accuracy 74.4%, 2020), OpenStreetMap, GPM IMERG,
+  SMAP (ubRMSE 0.038 m³/m³ surface, Reichle et al. 2017), Copernicus
+  Marine Service / OSTIA, WDPA / Protected Planet (with the
+  Russia-data restriction caveat). No formula, score, or calibration
+  station invented anywhere: every numeric score carries its citation,
+  and every missing score is [NEXT DATA]. Loop score 9/10, one round
+  (evaluate → self-check → correct → score).
+
+Nine new domain sections in the indicator catalogue (`references/indicators.md`
+§21–§29), assembled from the nine module drafts of 2026-10-27, each looped to
+9/10 by self-check (self-check → correct → score) before assembly, plus §30
+Forest (2026-10-28, looped to 9/10 by the same protocol), §31 Cropland
+(2026-10-27, looped to 9/10 by the same protocol) and §32 Non-peat wetlands
+and marshes (2026-10-28, looped to 9/10 by the same protocol) — twelve new
+sections in all. One new script (`scripts/fetch_satellite.py`, automated satellite fetch,
+2026-10-28); no new gallery entries — the catalogue grows; the machinery is
+otherwise unchanged. The catalogue now holds 32 sections and 411 indicator
+table rows (185 existing + 226 new), of which 348 are distinct indicators:
+163 new, 63 cross-references to existing sections.
+
+- **§21 Cryosphere and mountain hazards** — 14 rows (10 new, 4 cross-references
+  to §1/§3/§4): slope displacement by InSAR, displacement rate and acceleration,
+  glacier velocity, glacier area/terminus/thinning, glacial lake level/area/volume,
+  moraine-dam stability, river damming / barrier-lake watch, permafrost ground
+  temperature, air temperature at glacier elevation, micro-seismicity.
+- **§22 Steppe and natural grassland** — 17 rows (14 new, 3 cross-references to
+  §9/§10/§11): steppe vegetation composition and PFT shares, forage biomass,
+  stocking rate and grazing utilisation, SOC in steppe soils, erosion features,
+  LFA indices, virgin-steppe area and conversion, shrub encroachment, post-fire
+  recovery, steppe birds, burrowing mammals, grasshopper/locust outbreaks, SDG
+  15.3.1 degraded-land composite.
+- **§22 worked-example reframe** (2026-10-28) — the steppe worked example is
+  reframed as the Daurian steppe example with the Mongolian side /
+  transboundary UNESCO "Landscapes of Dauria" framing; the Daursky State
+  Nature Biosphere Reserve is the Russian-side component of the property,
+  not the example's subject. All published values and gaps unchanged
+  (gazelle June 2020: 18,898 counted / 21,701 estimated, Buuveibaatar et
+  al. 2024; tarbagan 3,300–4,100 families, Bazhenov 2019; [NEXT DATA] gaps:
+  Daursky-reserve-only gazelle total, current marmot density, burned area,
+  SOC). Applied in `references/worked-examples-new-sections.md`,
+  `references/indicators.md` (§22 summary line) and the steppe draft
+  `~/workspace/ecosystem-twin-steppe-section-DRAFT.md`, per her correction
+  of 2026-10-27.
+- **§23 Livestock farm as an ecosystem** — 18 rows (11 new, 7 cross-references
+  to §5/§8/§9/§10/§11/§14/§15/§17/§22): manure production, farm N/P nutrient
+  balance, manure storage capacity and freeboard, manure application, ammonia
+  and methane fluxes, nitrous oxide, farm water use and effluent, slurry-lagoon
+  integrity, livestock stream access, soil compaction under grazing.
+- **§24 Peatlands and bogs** — 15 rows (14 new, 1 cross-reference to §4): peat
+  extent and depth, peat carbon stock, water-table depth in peat, drainage
+  status, Sphagnum cover, peatland vegetation composition, net GHG flux from
+  peat, peat fire, subsidence, extraction, rewetting state, peatland condition
+  class, paludiculture, peat fire risk (Research).
+- **§25 Marine and coastal** — 24 rows (17 new, 7 cross-references to
+  §4/§6/§11/§12/§14/§15/§16): SST and marine heatwaves, Degree Heating Weeks
+  and bleaching alert levels, estuarine salinity gradient, tidal level and
+  sea-level trend, seawater pH, aragonite saturation, live coral cover,
+  bleaching prevalence and mortality, coral recruitment and disease,
+  crown-of-thorns density, reef structural complexity, mangrove extent, seagrass
+  extent/cover/density, shoreline position and erosion rate, underwater noise
+  (Research).
+- **§26 Urban ecosystems** — 22 rows (13 new, 9 cross-references to
+  §1/§3/§4/§6/§9/§10/§11/§14/§15/§16): heat-island intensity (air and surface),
+  impervious-surface share, combined-sewer / storm-water overflow frequency,
+  duration and volume, green space per capita and accessibility, tree canopy
+  cover and canopy equity, proportion of natural areas, artificial light at
+  night, urban metabolism (water, energy and GHG, waste and wastewater).
+- **§27 Aquaculture — fish farming** — 19 rows (19 new): dissolved oxygen,
+  unionised ammonia and nitrite in the production unit, water temperature
+  against the species optimum, mortality and disease incidence, sea-lice load,
+  therapeutic treatments, eFCR, stocking density, effluent nutrient and organic
+  loads, benthic sulphide/redox, receiving-water state against a reference
+  site, escapes and estimated unexplained loss, wild-fish interaction, water
+  abstraction, fallowing, operational welfare indicators (Research).
+- **§28 Desert and arid lands** — 19 rows (8 new, 11 cross-references to
+  §1/§2/§3/§8/§9/§11/§15/§17/§22): UNEP aridity index, climatic water balance
+  and seasonality, soil-adjusted fractional vegetation cover, desert vegetation
+  condition, rain-use efficiency, biocrust cover and function proxies, dune
+  migration rate, oasis extent and water. The desertification extent row is a
+  cross-reference to the §22 SDG 15.3.1 composite — the same indicator, not a
+  second copy.
+- **§29 Tundra and polar** — 17 rows (12 new, 5 cross-references to
+  §1/§3/§10/§15/§17): tundra vegetation composition, shrubification,
+  NDVI greening/browning, active-layer thickness, thermokarst features, SOC in
+  tundra soils, GHG fluxes, caribou/reindeer, lemming/vole cycle, insect
+  emergence timing, coastal erosion rate, post-fire recovery.
+- **§30 Forest** (2026-10-28) — 21 rows (16 new, 5 cross-references to
+  §9/§10/§11/§15): forest extent and net area change, forest type and biome
+  composition (natural vs planted), primary and old-growth share, stand
+  age-class distribution, basal area and stem density, aboveground biomass
+  carbon, forest soil organic carbon, net carbon flux (NEE/NEP), harvest
+  against the allowable annual cut, forest loss by driver, pest and disease
+  outbreak, fragmentation, regeneration, understory condition, protected-area
+  and certified-forest share; canopy/deadwood and fire regime per §10, tree
+  health per §11; mast yield index (cedar nut and berry crops, Research,
+  [NEXT DATA]). Worked example: Harvard Forest (sink 2.0 ± 0.4 Mg C/ha/yr
+  1993–2000, hemlock stands net source after 2014). No [unverified] flags;
+  [NEXT DATA] gaps named in the example (current canopy, deadwood, biomass
+  stock, regeneration density, fragmentation).
+- **§30 second worked example — Barguzinsky Reserve and the Buryatia taiga
+  edge: human–brown bear conflict, autumn 2026** (2026-10-28, her decision
+  of 27 October 2026, 22:10 EDT — an explicit exception to the
+  "no Russian worked examples" rule, only with links to authoritative
+  sources for every figure). Cross-reference rows in §15 (brown bear
+  abundance, age structure of conflict animals), §17 (conflict reports,
+  food attractants register, quota uptake and regulated removal) and §20
+  (taiga-edge watch levels); one new §30 row (mast yield index, Research,
+  [NEXT DATA]). Verified figures: Buryatia brown bears 6,113 (2026),
+  6,276 (2025), 5,385 (2021), 4,625 (2011); density 0.21 per 1,000 ha;
+  47 exits in all of 2025; regulated 149 (14 Sep), 331 (3 Oct), 436
+  (20 Oct); 6 attacks, 2 dead, autumn 2026; harvest limit 1,272, about
+  900 permits, about 300 harvested a year; reserve 374,322 ha, sable
+  20–30 at creation → 1,500–2,000 today. Reliability caveat carried into
+  the example: the Burprirodnadzor / Ministry of Natural Resources figures
+  reach us as relayed by the press; the primary departmental summaries are
+  not published openly. [NEXT DATA] gaps named in the example (current
+  bear numbers in the reserve itself; quantitative mast index for Buryatia
+  2026; wolf numbers; attractants register; numeric young-share; long-term
+  attacks series).
+- **§31 Cropland** (2026-10-27) — 21 rows (15 new, 6 cross-references to
+  §5/§9/§10/§11/§14/§15): cropland extent and net area change, crop type and
+  cropping-system composition, cropping intensity, crop rotation diversity and
+  fallow share, tillage system share, SOC stock under tillage, irrigation water
+  use and efficiency, soil salinisation (ECe trend, salt-affected share),
+  fertiliser N/P balance and NUE, direct N₂O from fertilised soil, pesticide
+  pressure, yield and yield stability, soil erosion on arable land (RUSLE),
+  field-margin and biodiversity-strip share, crop residue fate and
+  open-burning share, rice-paddy water regime and methane (AWD scaling
+  factors); receiving-water nutrients per §5, soil per §9, landscape per §10,
+  flora per §11, pollinators per §14, farmland birds per §15. Worked example:
+  GEPIS rice paddies, Mayurapura, Hambantota, Sri Lanka (project target yield
+  5.5–6.2 t/ha; Beira Lake WPI 2.4–2.5 against 1.0; national Maha ~2,853 kg/ha,
+  Yala ~3,207 kg/ha). No [unverified] flags in the rows; [NEXT DATA] gaps
+  named in the example (measured GEPIS yield, water use, CH₄/N₂O fluxes, SOC,
+  ECe, margins, erosion). Russian material only as published-data anchors
+  (Kursk chernozem SOC, Mikhailova & Post 2006; erosion, Plotnikova et al.
+  2024) — no Russian worked example, pilot or showcase case, per her
+  correction of 2026-10-27.
+
+- **§32 Non-peat wetlands and marshes** (2026-10-28) — 19 rows (14 new, 5
+  cross-references to §4/§9/§10/§11/§15): wetland extent and net area change
+  (Ramsar definition; 35% lost 1970–2015, GWO 2018; 64–71% since 1900,
+  Davidson 2014), wetland type composition, hydroperiod, water-level regime,
+  salinity regime (coastal/brackish), vegetation composition (reeds, sedges,
+  salt-marsh grasses), sediment accretion against local sea-level rise
+  (organic matter at most ~3 mm/yr, Morris et al. 2016), nutrient retention
+  (Olentangy: P ~60%, nitrate ~40%), soil carbon and GHG flux in
+  mineral-soil marsh, waterbird use (Ramsar Criteria 5/6), fish nursery
+  function (Beck et al. 2001), invasive species (Phragmites haplotype M,
+  Saltonstall 2002; cattail expansion), drainage and reclamation pressure,
+  restoration state (non-peat); water quality per §4, soil per §9,
+  landscape per §10, flora per §11, fauna per §15. Worked example: the
+  Everglades, Florida, USA (historic ~4,000 sq mi, just over half remains;
+  hydroperiod classes 11+ / 9–10 / 3–7 months; TP criterion 10 µg/L;
+  wading-bird nests 138,834 in 2018, ~3,500 in the 2025 drought season);
+  regional case: Mongol Daguur, Mongolia (Ramsar site 210,000 ha; staging
+  2,000 geese, 4,000 shelducks, 20,000 ducks, 7,000 coots, over 10,000
+  gulls). No [unverified] flags in the rows; [NEXT DATA] gaps named in the
+  examples (Everglades accretion, fish-nursery densities, intrusion,
+  nutrient balance, sawgrass/cattail shares; Mongol Daguur hydroperiod,
+  accretion, retention, reed area, fish densities, current bird count).
+  No Russian worked example, pilot or showcase case, per her correction of
+  2026-10-27 — Mongolia is the regional example instead; the Selenga delta
+  material gathered during research is deliberately not used as an example.
+- **§18 quick sets:** eleven new quick sets (Cryosphere / mountain, Steppe /
+  natural grassland, Livestock farm, Peatland, Marine / coastal, Urban,
+  Aquaculture, Desert / arid, Tundra / polar, Forest, Cropland), each checked against its
+  section's table.
+- **Honesty flags preserved:** the [unverified] flags from the drafts are
+  carried into the catalogue (steppe marmot-density threshold; the 9 m²
+  per-capita green-space figure as a WHO publication; the EU Regulation
+  2024/1244 500 t aquaculture reporting threshold; a water-use benchmark per
+  tonne of aquaculture production) and the [NEXT DATA] gaps from the worked
+  examples (Daursky steppe, North Wyke Farm Platform, Toolik Lake tundra).
+  The tundra human-pressure row carried the Liu et al. 2026 figures as
+  provisional until the first-layer check verified them against the full
+  text (DOI 10.34133/remotesensing.1062) — the flag is now removed; see
+  the first-layer note below.
+- **Brand and licence pending the author's decision:** the skill is named
+  descriptively, "Ecosystem Digital Twin by Rigjita Baldanova"; the brand
+  name (candidates ADIS and RB) is undecided. The licence stays CC BY 4.0 as
+  in v2.7; the licence for v2.8+ (BY-ND pending the author's «да») is
+  undecided.
+- **Scope boundary:** each new section is a Conditional module, included
+  only when its object is present, with interface discipline built in (the
+  twin ingests external monitoring and hands warnings to the responsible
+  authority; the decision is recorded in the Object Passport at Phase 1).
+
+Verification: 230 tests pass (227 baseline + 3 new: T81); strict lint passes from a fresh copy installed as `ecosystem-digital-twin/`; SKILL.md 480 lines (lint count); BEIRA-F-001 untouched, chain verifies.
+
+**Loop-evaluation round 1 (2026-10-27, candidate only):** independent re-check of the assembly found and fixed 3 defects. (1) The §27 aquaculture table arrived hard-wrapped: 11 of its 19 rows spanned several physical lines, splitting the table into 12 fragments in strict Markdown rendering. All rows joined to single lines; row counts unchanged; a new regression test in `TestNewSections` (now 4 tests) pins each §21–§29 table as one contiguous block. (2) §25 DHW row overstated the NOAA wording ("reef-wide bleaching" at Alert Level 1) — corrected to NOAA's "bleaching likely" (Level 1) and "bleaching with mortality likely" (Level 2). (3) The green state was unnamed and the public status line had no traffic-light field: §20 now names green explicitly (no band breached = measures working; amber = measures insufficient; red = measures failed or acute risk), `assets/templates.md` §10 gains Status (green / yellow / red) and Recommendation fields, and SKILL.md Stage 6 names the colour and the recommendation in the status-line description. Verification after the fixes: 231 tests pass (230 + 1 new); strict lint passes; SKILL.md 480 lines. Round 2 self-check found one drift: the SKILL.md status-line wording had no mirror in SKILL.ru.md — mirrored (green / yellow / red + recommendation); re-verified 231 tests pass, lint passes, SKILL.md 480 lines, SKILL.ru.md 526 lines.
+
+**First-layer improvements (2026-10-27, candidate only):** (1) The worked examples and full source lists from the nine module drafts now live in the candidate as `references/worked-examples-new-sections.md` (355 lines: 9 examples) and `references/sources-new-sections.md` (1,423 lines: 9 source lists), copied verbatim from the drafts — the drafts' self-check logs are not carried over, as they are process records, not sources. Both files carry a `## Contents` list near the top (required by the package lint for references files over 100 lines). SKILL.md and SKILL.ru.md point at the two files in the Companion Documents list and in the "New in v2.8" paragraph, and the stale "19-section" catalogue count is corrected to 29 in both. A new regression test in `TestNewSections` (now 5 tests) pins the two files' presence, contents and flags. (2) `assets/templates.md` §10 gains a filled public-status-line example in plain words: a Delhi resident asks "Can I go outside today? What are we breathing?" — status red, recommendation in ordinary words; a format example only, no numbers invented. (3) The Liu et al. 2026 tundra figures are verified against the full text of the paper ("Anthropogenic Disturbance Dampens Climate-Driven Greening in the Arctic", J. Remote Sens. 6, 1062, DOI 10.34133/remotesensing.1062; eight authors: Liu, Wang, Zhang, Zhang, Dong, Liu, Li & Cheng; published 5 August 2026): 2,221 clusters, 21,402 km² (435 settlement — 12,902 km²; 1,786 non-settlement — 8,500 km²), 2000–2020, Landsat 5/7/8 Collection 2 Tier 1, 30 m, 16.1%. The provisional flag is removed from the §29 row, the tundra draft's table row, entry and verification note (a dated addendum records the change in the draft's self-check log; the Round 1 log is left as the historical record). The earlier press-release title and two-author form are corrected wherever they appeared. Verification after the changes: 232 tests pass (231 + 1 new); strict lint passes; SKILL.md 482 lines. Nothing published: the live skill and GitHub are untouched.
+
+**Bozkurt worked example (2026-10-27, candidate only, on her word):** a second worked example for §21 — the Bozkurt–Ezine flash flood, Western Black Sea, Türkiye, 11 August 2021 — added to `references/worked-examples-new-sections.md` (now 364 lines, 10 examples) with its sources in `references/sources-new-sections.md` under §21 (now 1,431 lines). Casualty, rescue and rainfall-total figures verified against the peer-reviewed Natural Hazards paper citing AFAD 2022b (82 died, 364 medical support, 2,483 rescued, Bozkurt 453 kg/m²); intensity and return-period figures from the Kastamonu University NbS4LD case study, verified against the document itself on 27 October 2026 (the case study states 77 lives for the watershed flood vs AFAD's 82 for the event as a whole — the discrepancy is recorded in the sources file); channel narrowing from AP reporting of geologists. The T81 regression test is unchanged (one counted example per section; the Bozkurt example carries a distinct heading). Verification after the change: 232 tests pass; strict lint passes; SKILL.md 482 lines.
+
+**Second-layer flag check (2026-10-28, candidate only):** all 4 [unverified] flags and all 3 [NEXT DATA] gaps re-checked against primary sources by four parallel researchers. Closed: EU 2024/1244 500 t threshold — confirmed against Annex I row 7 (production capacity, strictly exceeding 500 t), with the correction that N/P reporting is triggered only above the Annex II thresholds (total N 50,000 kg/yr, total P 5,000 kg/yr to water); water-use benchmark — closed as a negative result with verified per-type throughput ranges (raceways 16,000–42,000 m³/t; flow-through salmonids 22,000–95,000; fishponds 1,200–10,000; shrimp ponds 20,000–100,000; cages ~0.75; RAS total 300–800, make-up 0.15–5 m³/t) and the rule that throughput and make-up water are separate quantities. Daursky: gazelle (Daursky + Dzeren Valley, June 2020: 18,898 counted, 21,701 estimated) and marmot family counts (SE Transbaikalia 3,300–4,100 families; Daursky buffer 75–85, reserve ~30) closed; reserve-only gazelle total, current marmot density, burned area and SOC stay open. North Wyke: N balance (Carswell et al. 2019), housed-cattle enteric CH₄ 170–174 g/day (Meo-Filho et al. 2023) and NH₃ pad rate 2.5 g m⁻² d⁻¹ (Dumont et al. 2012) closed; P balance, whole-platform CH₄ total and measured whole-farmlet NH₃ flux stay open. Toolik: shrub cover (+132.3%, 1990→2023), active layer (28–52 cm, no trend), caribou (Central Arctic Herd 26,600, July 2025), SOC (5–25 kg C m⁻²) and fluxes closed; lemming densities stay open (NEON dataset is the next lead). Staying flags, both with documented negative checks: marmot density threshold (no standard exists) and the WHO 9 m² figure (Czesak & Różycka-Czas 2025 confirms no WHO publication contains it). Tests updated: test_unverified_flags_preserved now pins the two remaining flags and the closed content; test_worked_examples_and_sources_present now pins the closed values and the remaining lemming gap. Files now: worked-examples 345 lines (10 examples), sources 1,404 lines. Verification after the changes: 232 tests pass; strict lint passes; SKILL.md 482 lines. Nothing published: the live skill and GitHub are untouched.
+
+**Automated satellite fetch (2026-10-28, candidate only, on her word):** new `scripts/fetch_satellite.py` (stdlib-only network/STAC: `urllib` + `json`; NDVI computed via optional `rasterio`/`numpy`, deferred with an honest note when absent). Searches the Planetary Computer STAC API (no key; collections `sentinel-2-l2a`, `landsat-c2-l2`, `sentinel-1-rtc` — verified live 2026-10-28) and the Copernicus Data Space STAC (account + token for download; unreachable from this environment 2026-10-28 — verify at build time). Modes: `--check` (search only, no download), `--download` (red/NIR bands of the least-cloudy scene), `--compute-ndvi` (NDVI statistics on a 512×512 preview; zero denominator recorded as no measurement, never as 0), `--stac-file` (offline on a recorded response). Every run writes a dated manifest with source, collection, bbox, dates and retrieval date (§19) and registers the product as a virtual sensor in the Object Passport. Exit codes: 0 ok; 2 usage error; 3 catalogue/network/auth failure — a failure is loud, never silent. `references/data-sources.md` gained a section on the script and a latency-honesty table (Sentinel-2 ~5 days, Sentinel-1 6–12 days, Landsat 16 days, MODIS/VIIRS daily; ground telemetry is the only real-time layer — a satellite is a periodic snapshot, never real-time). SKILL.md gained three pointers (compatibility note, "New in v2.8", Stage 2). New tests: `TestFetchSatellite` (T82, 8 tests, offline on a recorded STAC response). Live smoke test 2026-10-28: `--check` over the Langtang bbox (85.5,28.2,86.0,28.5, August 2026) returned 3 Sentinel-2 scenes with B04/B08 asset links; the scenes were 82–89% cloud — the monsoon season, and the default `--max-cloud 20` correctly keeps none of them. Verification after the changes: 240 tests pass; strict lint passes; SKILL.md 483 lines. Nothing published: the live skill and GitHub are untouched.
+
+**Registered virtual sensors — Variant B (2026-10-28, candidate only, on her word):** the first real registrations in the skill: six virtual sensors in the Object Passport form, as a worked example in `references/worked-examples-new-sections.md` (now 576 lines, 11 examples) with full sources in `references/sources-new-sections.md` (now 1,511 lines). Beira Lake, Sri Lanka (Prasad et al. 2024, Water 16(11), 1616): Sentinel-2 chlorophyll-a by NDCI (Mishra & Mishra 2012: Chl-a = 194.325·NDCI² + 86.115·NDCI + 14.039; published RMSE 1.43 µg/L for Chl-a < 30 µg/L; Molkov et al. 2019: 3.02 µg/L); Landsat 8/9 water surface temperature by the USGS Collection 2 split-window product (Gerace et al. 2020; published RMSE 0.87 K L8 / 0.74 K L9, Eon et al. 2023); water surface extent by MNDWI (Xu 2006; JRC Global Surface Water validation: under 1% false water, under 5% missed, Pekel et al. 2016); turbidity by Dogliotti et al. 2015 (A^T 228.1/3078.9 FNU, C^T 0.1641/0.2112; published RMSE 20.5 FNU, n = 106); Secchi depth by the Lee et al. 2015 QAA model — the one Beira-local published skill score: RMSE 0.049 m, R² = 0.670, n = 43 (Prasad et al. 2024, §3.3.3). Langtang slope: Sentinel-1 InSAR displacement (up to 40 cm in 48 days, ICIMOD 2026; published accuracy anchors ±10 mm vs levelling/GNSS, and formal ~1.2 mm vs actual 13.8/17.2 mm error budget). Honest gaps, all named: Beira-local SS_RMSE for chlorophyll-a, temperature, extent and turbidity; a Beira-local chlorophyll-a calibration above 30 µg/L; Langtang ground truth; no in-situ turbidity exists in the published Beira record. Step 1 (Variant A folded in): Sentinel-1 and Open-Meteo added to `references/data-sources.md` (satellite table, atmosphere table, forecast-weather stream). New test T83 (`TestRegisteredVirtualSensors`, 3 tests). Verification after the changes: 243 tests pass; strict lint passes; SKILL.md 483 lines (unchanged — no SKILL.md edit was needed). Nothing published: the live skill and GitHub are untouched.
+
 ## v2.7 — 2026-10-26
 
 The release of the whole v2.7 program (one version at the end, per the

@@ -238,9 +238,31 @@ for the client and the public, distinct from the handover note (for a
 successor builder, technical) and from RO-Crate (for machines).
 
 - Current state: ____
+- Status (green / yellow / red — from the §20 bands; green means no band breached): ____
+- Recommendation (what to do, in plain words): ____
 - What changed since the last status line: ____
 - Maturity label (the skill's 5-level ladder, never above the level earned): ____
 - Gaps ([НЕТ ДАННЫХ]): ____
+
+Example — a filled status line in plain words (a format example only:
+it shows the shape of the answer, not a real reading — no numbers are
+invented here, the air state is given only as the colour the §20 bands
+would give). A Delhi resident asks in plain words: "Can I go outside
+today? What are we breathing?"
+
+- Current state: the air today is heavily polluted — the twin's air
+  indicators sit in the red band, and the pollution has been building
+  since yesterday.
+- Status: red.
+- Recommendation: stay indoors today if you can. If you must go out,
+  wear a mask, keep away from busy roads, and come back inside as soon
+  as you can. Keep the windows closed. Check again tomorrow morning —
+  the twin will say whether the air has cleared.
+- What changed since the last status line: the air moved from yellow
+  to red overnight as the pollution built up.
+- Maturity label: Descriptive.
+- Gaps ([НЕТ ДАННЫХ]): no street-level sensor in this neighbourhood —
+  the reading comes from the nearest monitoring station.
 
 ## 11. Decision product (for the client)
 

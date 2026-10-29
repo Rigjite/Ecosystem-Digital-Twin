@@ -8,12 +8,14 @@ Formulas are checked against hand-computed values; CLIs are run as
 subprocesses so exit codes and gate behavior are tested as an agent sees them.
 """
 
+import collections
 import csv
 import importlib.util
 import json
 import math
 import os
 import random
+import re
 import subprocess
 import sys
 import tempfile
@@ -2248,10 +2250,13 @@ class TestDriftModule(Tmp):
         self.assertEqual(code, 2)
 
     def test_drift_documented(self):
+        # T92: the I/O table moved from SKILL.md to references/scripts.md;
+        # the content is pinned there, SKILL.md keeps only the pointer.
         skill = rtext(os.path.join(ROOT, "SKILL.md"))
         self.assertIn("`scripts/drift.py`", skill)
-        self.assertIn("connectivity", skill)
-        self.assertIn("median_travel_hours", skill)
+        table = rtext(os.path.join(ROOT, "references", "scripts.md"))
+        self.assertIn("connectivity", table)
+        self.assertIn("median_travel_hours", table)
 
 
 class TestForecastBulletin(Tmp):
@@ -2510,8 +2515,9 @@ class TestUserClassThresholds(Tmp):
             self.assertIn(phrase, indicators)
         templates = " ".join(rtext(os.path.join(ROOT, "assets", "templates.md")).split())
         self.assertIn("Decision-makers' operational limits (Phase 1):", templates)
-        skill = rtext(os.path.join(ROOT, "SKILL.md"))
-        self.assertIn("--class-thresholds FILE", skill)
+        # T92: the I/O table moved from SKILL.md to references/scripts.md.
+        table = rtext(os.path.join(ROOT, "references", "scripts.md"))
+        self.assertIn("--class-thresholds FILE", table)
 
 
 class TestExposureInventory(unittest.TestCase):
@@ -3346,6 +3352,1563 @@ class TestFieldTwinEtlStreams(unittest.TestCase):
         # The list lives in one place only: the README points at it, it does
         # not repeat the stream names.
         self.assertNotIn("Historical weather", readme)
+
+
+class TestNewSections(unittest.TestCase):
+    """T81: v2.8 domain sections §21-§29 in the indicator catalogue."""
+
+    def test_sections_present_with_expected_row_counts(self):
+        import re
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        parts = re.split(r"\n## (\d+)\. ", text)
+        got = {}
+        for i in range(1, len(parts), 2):
+            n = int(parts[i])
+            rows = [l for l in parts[i + 1].splitlines()
+                    if l.startswith("| ") and not l.startswith("| Indicator | What it tells")
+                    and not re.match(r"^\|[-: |]+\|$", l)]
+            got[n] = len(rows)
+        expected = {21: 15, 22: 17, 23: 18, 24: 15, 25: 24,
+                    26: 22, 27: 20, 28: 19, 29: 17}
+        for n, count in expected.items():
+            self.assertEqual(got.get(n), count, f"§{n} row count")
+        self.assertEqual(sum(expected.values()), 167)
+
+    def test_quick_sets_present_and_skill_points_at_sections(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        for name in ("Cryosphere / mountain", "Steppe / natural grassland",
+                     "Livestock farm", "Peatland", "Marine / coastal", "Urban",
+                     "Aquaculture", "Desert / arid", "Tundra / polar"):
+            self.assertIn(name, text)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertIn("§21 Cryosphere", skill)
+        self.assertIn("§29 Tundra and polar", skill)
+        self.assertIn("Ecosystem Digital Twin by Rigjita Baldanova", skill)
+
+    def test_both_unverified_flags_closed(self):
+        """T89, 2026-10-28: both remaining [unverified] flags closed as verified
+        negative results — marmot (no density standard; baseline/trend +
+        Enkhsaikhan founder minimums + Xu plague cut-point) and WHO 9 m²
+        (Italian law D.M. 1444/1968, not WHO)."""
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        for flag in ("[unverified] — no standardised marmot density threshold",
+                     "[unverified as a WHO publication"):
+            self.assertNotIn(flag, text)
+        self.assertNotIn("[unverified — the 500 t threshold was", text)
+        self.assertNotIn("[unverified] — set from the permit", text)
+        self.assertIn("50,000 kg/yr", text)
+        self.assertIn("16,000–42,000", text)
+
+    def test_new_section_tables_are_single_fragments(self):
+        """T81: each §21-§29 table is one contiguous block. A hard-wrapped
+        row splits the table in strict Markdown rendering (the §27 table
+        arrived split into 12 fragments; fixed in loop round 1)."""
+        import re
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        parts = re.split(r"\n## (\d+)\. ", text)
+        expected = {21: 17, 22: 19, 23: 20, 24: 17, 25: 26,
+                    26: 24, 27: 22, 28: 21, 29: 19, 30: 23, 31: 23,
+                    32: 21}
+        for i in range(1, len(parts), 2):
+            n = int(parts[i])
+            if n < 21:
+                continue
+            lines = parts[i + 1].splitlines()
+            idx = [j for j, l in enumerate(lines) if l.startswith("|")]
+            self.assertEqual(len(idx), expected[n], f"§{n} table lines")
+            between = [l for l in lines[idx[0]:idx[-1] + 1]
+                       if l.strip() and not l.startswith("|")]
+            self.assertEqual(between, [], f"§{n} table split by prose")
+
+    def test_worked_examples_and_sources_present(self):
+        """T81: worked examples and full source lists for §21-§32 live in
+        references/ (first-layer improvements, 2026-10-27; second-layer
+        check, 2026-10-28; §30 Forest added 2026-10-28; §31 Cropland added
+        2026-10-27; §32 Non-peat wetlands and marshes added 2026-10-28;
+        second §30 example — Barguzinsky bear — added 2026-10-28).
+        Both files carry a
+        ## Contents list near the top, one worked example and one source list
+        per new section, the closed [NEXT DATA] values and the remaining
+        lemming-density gap, and the Liu et al. 2026 DOI."""
+        names = ("Cryosphere", "Steppe", "Livestock", "Peatland",
+                 "Marine", "Urban", "Aquaculture", "Desert", "Tundra",
+                 "Forest", "Cropland", "Wetlands")
+        ex = rtext(os.path.join(ROOT, "references",
+                                "worked-examples-new-sections.md"))
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        for text in (ex, src):
+            head = "\n".join(text.splitlines()[:15])
+            self.assertIn("## Contents", head)
+            for name in names:
+                self.assertIn(name, text)
+        self.assertEqual(ex.count("## Worked example:"), 12)
+        self.assertEqual(src.count("## Sources and verification status"), 12)
+        self.assertIn("21,701", ex)
+        self.assertIn("75–85 families", ex)
+        self.assertIn("26,600", ex)
+        self.assertIn("[NEXT DATA] gap — lemming densities", ex)
+        self.assertIn("10.34133/remotesensing.1062", src)
+        ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertIn("21,402", ind)
+        self.assertNotIn("provisional", ind)
+
+
+class TestForestSection(unittest.TestCase):
+    """T84: v2.8 domain section §30 Forest in the indicator catalogue
+    (added 2026-10-28, looped to 9/10 by the same protocol as §21-§29)."""
+
+    def _section(self, text, number):
+        import re
+        parts = re.split(r"\n## (\d+)\. ", text)
+        for i in range(1, len(parts), 2):
+            if int(parts[i]) == number:
+                return parts[i + 1]
+        self.fail(f"§{number} not found")
+
+    def test_section_present_with_expected_row_counts(self):
+        import re
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 30)
+        rows = [l for l in sec.splitlines()
+                if l.startswith("| ") and not l.startswith("| Indicator | What it tells")
+                and not re.match(r"^\|[-: |]+\|$", l)]
+        self.assertEqual(len(rows), 21, "§30 row count")
+        cross = [l for l in rows if "Cross-reference — see §" in l]
+        self.assertEqual(len(cross), 5, "§30 cross-reference rows")
+        self.assertEqual(len(rows) - len(cross), 16, "§30 new rows")
+        self.assertIn("Forest extent and net area change", sec)
+        self.assertIn("Primary and old-growth forest area and share", sec)
+        self.assertIn("Harvested area and volume against the allowable "
+                      "annual cut", sec)
+        self.assertIn("Forest loss by driver", sec)
+        self.assertIn("Pest and disease outbreak", sec)
+        self.assertIn("Regeneration: seedling and sapling density", sec)
+        self.assertIn("Net carbon flux: NEE / NEP", sec)
+
+    def test_section_table_is_single_fragment(self):
+        """T84: the §30 table is one contiguous block (see T81 for §21-§29)."""
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 30)
+        lines = sec.splitlines()
+        idx = [j for j, l in enumerate(lines) if l.startswith("|")]
+        self.assertEqual(len(idx), 23, "§30 table lines")
+        between = [l for l in lines[idx[0]:idx[-1] + 1]
+                   if l.strip() and not l.startswith("|")]
+        self.assertEqual(between, [], "§30 table split by prose")
+
+    def test_quick_set_present_and_counts_updated(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertIn("30 Forest", text)
+        self.assertIn("- **Forest:** forest extent and net area change", text)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertIn("§30 Forest", skill)
+        self.assertIn("32-section tiered indicator catalogue", skill)
+        self.assertIn("226 new table rows: 163 new indicators plus "
+                      "63 cross-references", skill)
+        self.assertIn("twelve new sections §21–§32", skill)
+        skill_ru = rtext(os.path.join(ROOT, "SKILL.ru.md"))
+        self.assertIn("§30 Лес", skill_ru)
+        self.assertIn("каталог индикаторов из 32 разделов", skill_ru)
+
+    def test_worked_example_and_sources_present(self):
+        """T84: Harvard Forest worked example and the §30 source list live
+        in references/, with published values and named [NEXT DATA] gaps."""
+        ex = rtext(os.path.join(ROOT, "references",
+                                "worked-examples-new-sections.md"))
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        self.assertIn("## §30 — Forest", ex)
+        self.assertIn("what a twin for Harvard Forest would show", ex)
+        self.assertIn("2.0 ± 0.4 Mg C/ha/yr", ex)
+        self.assertIn("29.6–53.0 m²/ha", ex)
+        self.assertIn("net carbon source after 2014", ex)
+        self.assertIn("Current canopy-cover percentage", ex)
+        self.assertIn("## §30 — Forest", src)
+        self.assertIn("10.1126/science.1201609", src)  # Pan et al. 2011
+        self.assertIn("10.1126/science.1062962", src)  # Barford et al. 2001
+        self.assertIn("10.1126/science.aau3445", src)  # Curtis et al. 2018
+        self.assertIn("10.1002/ecm.1423", src)  # Finzi et al. 2020
+        self.assertIn("4.14 B ha", src)
+        self.assertIn("714 Gt", src)
+
+    def test_no_new_unverified_flags_in_section(self):
+        """T84: no §30 indicator row carries an [unverified] flag; exactly
+        one [NEXT DATA] row is allowed — the mast yield index, added
+        2026-10-28 with the Barguzinsky bear example (no published
+        quantitative mast index for Buryatia 2026 exists). The
+        worked-example note at the end of the section may name the
+        example's gaps, and the sources file states the verification note.
+        (The note is prose, not a row.)"""
+        import re
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 30)
+        rows = [l for l in sec.splitlines()
+                if l.startswith("| ") and not l.startswith("| Indicator | What it tells")
+                and not re.match(r"^\|[-: |]+\|$", l)]
+        self.assertEqual(len(rows), 21)
+        for row in rows:
+            self.assertNotIn("[unverified]", row)
+        gaps = [l for l in rows if "[NEXT DATA]" in l]
+        self.assertEqual(len(gaps), 1, "one [NEXT DATA] row in §30")
+        self.assertIn("Mast yield index", gaps[0])
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        sec_src = src.split("## §30 — Forest", 1)[1]
+        self.assertIn("No [unverified] flags in this section", sec_src)
+
+
+
+class TestCroplandSection(unittest.TestCase):
+    """T85: v2.8 domain section §31 Cropland in the indicator catalogue
+    (added 2026-10-27, looped to 9/10 by the same protocol as §21-§30)."""
+
+    def _section(self, text, number):
+        import re
+        parts = re.split(r"\n## (\d+)\. ", text)
+        for i in range(1, len(parts), 2):
+            if int(parts[i]) == number:
+                return parts[i + 1]
+        self.fail(f"§{number} not found")
+
+    def test_section_present_with_expected_row_counts(self):
+        import re
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 31)
+        rows = [l for l in sec.splitlines()
+                if l.startswith("| ") and not l.startswith("| Indicator | What it tells")
+                and not re.match(r"^\|[-: |]+\|$", l)]
+        self.assertEqual(len(rows), 21, "§31 row count")
+        cross = [l for l in rows if "Cross-reference — see §" in l]
+        self.assertEqual(len(cross), 6, "§31 cross-reference rows")
+        self.assertEqual(len(rows) - len(cross), 15, "§31 new rows")
+        self.assertIn("Cropland extent and net area change", sec)
+        self.assertIn("Crop rotation diversity and fallow share", sec)
+        self.assertIn("Soil organic carbon stock under tillage", sec)
+        self.assertIn("Irrigation water use and efficiency", sec)
+        self.assertIn("Soil salinisation: ECe trend and salt-affected share", sec)
+        self.assertIn("Fertiliser N/P balance, nitrogen-use efficiency and runoff", sec)
+        self.assertIn("Pesticide pressure: use intensity and risk", sec)
+        self.assertIn("Yield and yield stability", sec)
+        self.assertIn("Soil erosion on arable land", sec)
+        self.assertIn("Field-margin and biodiversity-strip share and condition", sec)
+        self.assertIn("Rice-paddy water regime and methane", sec)
+
+    def test_section_table_is_single_fragment(self):
+        """T85: the §31 table is one contiguous block (see T81 for §21-§30)."""
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 31)
+        lines = sec.splitlines()
+        idx = [j for j, l in enumerate(lines) if l.startswith("|")]
+        self.assertEqual(len(idx), 23, "§31 table lines")
+        between = [l for l in lines[idx[0]:idx[-1] + 1]
+                   if l.strip() and not l.startswith("|")]
+        self.assertEqual(between, [], "§31 table split by prose")
+
+    def test_quick_set_present_and_counts_updated(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertIn("31 Cropland", text)
+        self.assertIn("- **Cropland:** cropland extent and net area change", text)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertIn("§31 Cropland", skill)
+        self.assertIn("32-section tiered indicator catalogue", skill)
+        self.assertIn("226 new table rows: 163 new indicators plus "
+                      "63 cross-references", skill)
+        self.assertIn("twelve new sections §21–§32", skill)
+        skill_ru = rtext(os.path.join(ROOT, "SKILL.ru.md"))
+        self.assertIn("§31 Пашня", skill_ru)
+        self.assertIn("каталог индикаторов из 32 разделов", skill_ru)
+
+    def test_worked_example_and_sources_present(self):
+        """T85: GEPIS rice-paddy worked example and the §31 source list live
+        in references/, with published values and named [NEXT DATA] gaps."""
+        ex = rtext(os.path.join(ROOT, "references",
+                                "worked-examples-new-sections.md"))
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        self.assertIn("## §31 — Cropland", ex)
+        self.assertIn("what a twin for the GEPIS rice paddies in Sri Lanka "
+                      "would show", ex)
+        self.assertIn("5.5–6.2 t/ha", ex)
+        # T97: the national yield context is the DCS series, not the 2,853 study average.
+        self.assertIn("3,731 kg/ha", ex)
+        self.assertIn("470 mm", ex)
+        self.assertIn("2.4–2.5", ex)
+        self.assertIn("## §31 — Cropland", src)
+        self.assertIn("10.1038/s41467-017-00232-0", src)  # Borrelli et al. 2017
+        self.assertIn("10.1016/j.oneear.2020.02.007", src)  # Bowles et al. 2020
+        self.assertIn("10.1111/ele.13576", src)  # Albrecht et al. 2020
+        self.assertIn("10.1111/j.1365-2389.2005.00741.x", src)  # Mikhailova & Post 2006
+        self.assertIn("10.3390/w16111616", src)  # Prasad et al. 2024
+        self.assertIn("1,381 Mha", src)
+        self.assertIn("185 Mt", src)
+
+    def test_no_new_unverified_flags_in_section(self):
+        """T85: no §31 indicator row carries an [unverified] flag or a
+        [NEXT DATA] gap; the worked-example note at the end of the section
+        may name the example's gaps, and the sources file states the
+        verification note. (The note is prose, not a row.)"""
+        import re
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 31)
+        rows = [l for l in sec.splitlines()
+                if l.startswith("| ") and not l.startswith("| Indicator | What it tells")
+                and not re.match(r"^\|[-: |]+\|$", l)]
+        self.assertEqual(len(rows), 21)
+        for row in rows:
+            self.assertNotIn("[unverified]", row)
+            self.assertNotIn("[NEXT DATA]", row)
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        sec_src = src.split("## §31 — Cropland", 1)[1]
+        self.assertIn("No [unverified] flags in this section", sec_src)
+
+
+class TestWetlandsSection(unittest.TestCase):
+    """T86: v2.8 domain section §32 Non-peat wetlands and marshes in the
+    indicator catalogue (added 2026-10-28, looped to 9/10 by the same
+    protocol as §21-§31). No Russian worked example, pilot or showcase
+    case in this module, by the user's correction of 2026-10-27; the
+    regional case is Mongol Daguur, Mongolia."""
+
+    def _section(self, text, number):
+        import re
+        parts = re.split(r"\n## (\d+)\. ", text)
+        for i in range(1, len(parts), 2):
+            if int(parts[i]) == number:
+                return parts[i + 1]
+        self.fail(f"§{number} not found")
+
+    def test_section_present_with_expected_row_counts(self):
+        import re
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 32)
+        rows = [l for l in sec.splitlines()
+                if l.startswith("| ") and not l.startswith("| Indicator | What it tells")
+                and not re.match(r"^\|[-: |]+\|$", l)]
+        self.assertEqual(len(rows), 19, "§32 row count")
+        cross = [l for l in rows if "Cross-reference — see §" in l]
+        self.assertEqual(len(cross), 5, "§32 cross-reference rows")
+        self.assertEqual(len(rows) - len(cross), 14, "§32 new rows")
+        self.assertIn("Wetland extent and net area change", sec)
+        self.assertIn("Hydroperiod: flooded duration", sec)
+        self.assertIn("Water-level regime: stage, amplitude", sec)
+        self.assertIn("Salinity regime (coastal and brackish marshes)", sec)
+        self.assertIn("Sediment accretion and surface-elevation change", sec)
+        self.assertIn("Nutrient retention: inflow–outflow", sec)
+        self.assertIn("Waterbird use: breeding pairs", sec)
+        self.assertIn("Fish nursery function", sec)
+        self.assertIn("Invasive species: reed/cattail expansion", sec)
+        self.assertIn("Drainage and reclamation pressure", sec)
+
+    def test_section_table_is_single_fragment(self):
+        """T86: the §32 table is one contiguous block (see T81 for §21-§31)."""
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 32)
+        lines = sec.splitlines()
+        idx = [j for j, l in enumerate(lines) if l.startswith("|")]
+        self.assertEqual(len(idx), 21, "§32 table lines")
+        between = [l for l in lines[idx[0]:idx[-1] + 1]
+                   if l.strip() and not l.startswith("|")]
+        self.assertEqual(between, [], "§32 table split by prose")
+
+    def test_quick_set_present_and_counts_updated(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertIn("32 Non-peat wetlands and marshes", text)
+        self.assertIn("- **Non-peat wetlands and marshes:** wetland extent "
+                      "and net area change", text)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertIn("§32 Non-peat wetlands and marshes", skill)
+        self.assertIn("32-section tiered indicator catalogue", skill)
+        self.assertIn("226 new table rows: 163 new indicators plus "
+                      "63 cross-references", skill)
+        self.assertIn("twelve new sections §21–§32", skill)
+        skill_ru = rtext(os.path.join(ROOT, "SKILL.ru.md"))
+        self.assertIn("§32 Неторфяные водно-болотные угодья и марши", skill_ru)
+        self.assertIn("каталог индикаторов из 32 разделов", skill_ru)
+
+    def test_worked_example_and_sources_present(self):
+        """T86: Everglades worked example and Mongol Daguur regional case,
+        and the §32 source list, live in references/, with published values
+        and named [NEXT DATA] gaps. No Russian worked example."""
+        ex = rtext(os.path.join(ROOT, "references",
+                                "worked-examples-new-sections.md"))
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        self.assertIn("## §32 — Non-peat wetlands and marshes", ex)
+        self.assertIn("what a twin for the Everglades would show", ex)
+        self.assertIn("138,834", ex)
+        self.assertIn("3,500 nests", ex)
+        self.assertIn("Mongol Daguur", ex)
+        self.assertIn("current sediment-accretion rate", ex)
+        sec_ex = ex.split("## §32 — Non-peat wetlands and marshes", 1)[1]
+        self.assertNotIn("Selenga", sec_ex)
+        self.assertNotIn("Fefelov", sec_ex)
+        self.assertIn("## §32 — Non-peat wetlands and marshes", src)
+        self.assertIn("10.1071/MF14173", src)  # Davidson 2014
+        self.assertIn("10.1073/pnas.032477999", src)  # Saltonstall 2002
+        self.assertIn("10.1641/0006-3568(2001)051[0633:TICAMO]2.0.CO;2",
+                      src)  # Beck et al. 2001
+        self.assertIn("12.1 M km", src)
+        self.assertIn("10 µg/L", src)
+
+    def test_no_new_unverified_flags_in_section(self):
+        """T86: no §32 indicator row carries an [unverified] flag or a
+        [NEXT DATA] gap; the worked-example note at the end of the section
+        may name the example's gaps, and the sources file states the
+        verification note. (The note is prose, not a row.)"""
+        import re
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        sec = self._section(text, 32)
+        rows = [l for l in sec.splitlines()
+                if l.startswith("| ") and not l.startswith("| Indicator | What it tells")
+                and not re.match(r"^\|[-: |]+\|$", l)]
+        self.assertEqual(len(rows), 19)
+        for row in rows:
+            self.assertNotIn("[unverified]", row)
+            self.assertNotIn("[NEXT DATA]", row)
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        sec_src = src.split("## §32 — Non-peat wetlands and marshes", 1)[1]
+        self.assertIn("No [unverified] flags in this section", sec_src)
+
+
+class TestBarguzinskyBearExample(unittest.TestCase):
+    """T87: Barguzinsky Reserve and the Buryatia taiga edge worked example
+    (second example for §30, added 2026-10-28, on her decision of
+    27 October 2026, 22:10 EDT — an explicit exception to the "no Russian
+    worked examples" rule, only with links to authoritative sources for
+    every figure)."""
+
+    def test_example_present_with_verified_figures(self):
+        ex = rtext(os.path.join(ROOT, "references",
+                                "worked-examples-new-sections.md"))
+        self.assertIn("Second worked example for §30", ex)
+        self.assertIn("Barguzinsky Reserve and the Buryatia taiga edge", ex)
+        self.assertIn("374,322 ha", ex)
+        self.assertIn("6,113", ex)
+        self.assertIn("6,276", ex)
+        self.assertIn("5,385", ex)
+        self.assertIn("4,625", ex)
+        self.assertIn("0.21 per 1,000 ha", ex)
+        self.assertIn("436 by 20 October", ex)
+        self.assertIn("331 by 3 October", ex)
+        self.assertIn("149 bears by", ex)
+        self.assertIn("47 cases", ex)
+        self.assertIn("Six attacks", ex)
+        self.assertIn("two people died", ex)
+        self.assertIn("1,272", ex)
+        self.assertIn("1,500–2,000", ex)
+        self.assertIn("22:10 EDT", ex)
+
+    def test_reliability_caveat_and_gaps_named(self):
+        ex = rtext(os.path.join(ROOT, "references",
+                                "worked-examples-new-sections.md"))
+        self.assertIn("summaries are not published openly", ex)
+        for gap in ("Current brown bear numbers in the Barguzinsky Reserve",
+                    "quantitative cedar-nut and berry mast index",
+                    "Current wolf numbers in Buryatia",
+                    "register of food attractants",
+                    "numeric share of 2–3-year-old animals",
+                    "long-term series of attacks in Buryatia by year"):
+            self.assertIn(gap, ex)
+
+    def test_cross_reference_rows_present(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertIn("Brown bear abundance: state-monitoring count", text)
+        self.assertIn("Age structure of conflict animals", text)
+        self.assertIn("Human–wildlife conflict reports", text)
+        self.assertIn("Food attractants register", text)
+        self.assertIn("Quota uptake and regulated removal", text)
+        self.assertIn("Mast yield index", text)
+        self.assertIn("Taiga edge — human–bear conflict watch levels", text)
+        self.assertIn("Zakamensk in September 2026", text)
+
+    def test_sources_present(self):
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        self.assertIn("Barguzinsky bear sources", src)
+        self.assertIn("zapovednoe-podlemorye.ru", src)
+        self.assertIn("burunen.ru", src)
+        self.assertIn("ulan.mk.ru", src)
+        self.assertIn("vedomosti.ru", src)
+        self.assertIn("yuga.ru", src)
+        self.assertIn("Barguzinsky bear example (added 2026-10-28", src)
+        self.assertIn("not published openly", src)
+
+
+class TestFetchSatellite(Tmp):
+    """T82: automated satellite fetch (scripts/fetch_satellite.py). All
+    tests run offline on a recorded STAC response; no network is used."""
+
+    FIXTURE = {
+        "type": "FeatureCollection",
+        "features": [
+            {"id": "S2A_MSIL2A_20260810T045231_R076_T45RVM_20260810T112507",
+             "collection": "sentinel-2-l2a",
+             "properties": {"datetime": "2026-08-10T04:52:31.024000Z",
+                            "eo:cloud_cover": 12.5},
+             "assets": {
+                 "B04": {"href": "https://example.invalid/s2/B04.tif",
+                         "roles": ["data"],
+                         "type": "image/tiff; application=geotiff; "
+                                 "profile=cloud-optimized"},
+                 "B08": {"href": "https://example.invalid/s2/B08.tif",
+                         "roles": ["data"],
+                         "type": "image/tiff; application=geotiff; "
+                                 "profile=cloud-optimized"},
+                 "visual": {"href": "https://example.invalid/s2/visual.tif",
+                            "roles": ["overview"]}}},
+            {"id": "S2A_MSIL2A_20260815T045231_R076_T45RVM_20260815T112507",
+             "collection": "sentinel-2-l2a",
+             "properties": {"datetime": "2026-08-15T04:52:31.024000Z",
+                            "eo:cloud_cover": 45.0},
+             "assets": {
+                 "B04": {"href": "https://example.invalid/s2b/B04.tif",
+                         "roles": ["data"]},
+                 "B08": {"href": "https://example.invalid/s2b/B08.tif",
+                         "roles": ["data"]}}},
+            {"id": "S2A_MSIL2A_20260820T045231_R076_T45RVM_20260820T112507",
+             "collection": "sentinel-2-l2a",
+             "properties": {"datetime": "2026-08-20T04:52:31.024000Z"},
+             "assets": {
+                 "B04": {"href": "https://example.invalid/s2c/B04.tif",
+                         "roles": ["data"]},
+                 "B08": {"href": "https://example.invalid/s2c/B08.tif",
+                         "roles": ["data"]}}},
+        ],
+    }
+
+    def setUp(self):
+        super().setUp()
+        wtext(self.p("stac.json"), json.dumps(self.FIXTURE))
+
+    def base_args(self, *extra):
+        return ["--source", "sentinel-2",
+                "--bbox", "85.5,28.2,86.0,28.5",
+                "--start", "2026-08-01", "--end", "2026-08-31",
+                "--stac-file", self.p("stac.json"),
+                "--out", self.p("out"), *extra]
+
+    def test_parse_scenes(self):
+        mod = load("fetch_satellite")
+        scenes = mod.parse_scenes(self.FIXTURE, "sentinel-2")
+        self.assertEqual(len(scenes), 3)
+        self.assertEqual(scenes[0]["id"],
+                         "S2A_MSIL2A_20260810T045231_R076_T45RVM_20260810T112507")
+        self.assertEqual(scenes[0]["datetime"], "2026-08-10T04:52:31.024000Z")
+        self.assertEqual([s["cloud_cover"] for s in scenes],
+                         [12.5, 45.0, None])
+        self.assertEqual(sorted(scenes[0]["bands"]), ["B04", "B08"])
+        # Overview assets are not data bands.
+        self.assertEqual(scenes[0]["assets_available"], ["B04", "B08"])
+
+    def test_ndvi_math(self):
+        mod = load("fetch_satellite")
+        values = mod.ndvi_from_arrays([100, 200, 0], [300, 200, 0])
+        self.assertEqual(values, [0.5, 0.0, None])
+        self.assertEqual(mod.ndvi_stats(values),
+                         {"mean": 0.25, "min": 0.0, "max": 0.5,
+                          "n_valid": 2, "n_total": 3})
+        self.assertEqual(mod.ndvi_stats([None, None]),
+                         {"mean": None, "min": None, "max": None,
+                          "n_valid": 0, "n_total": 2})
+
+    def test_check_mode_writes_manifest_no_download(self):
+        code, out, err = run("fetch_satellite.py",
+                             *self.base_args("--check", "--max-cloud", "100"))
+        self.assertEqual(code, 0, err)
+        self.assertIsNotNone(out)
+        self.assertEqual(out["tool"], "fetch_satellite.py")
+        self.assertEqual(out["version"], "2.8")
+        with open(os.path.join(self.p("out"), "manifest.json")) as fh:
+            manifest = json.load(fh)
+        self.assertEqual(len(manifest["scenes"]), 3)
+        self.assertEqual(manifest["downloads"], [])
+        self.assertEqual(manifest["ndvi"]["status"], "not-computed")
+        self.assertEqual([f for f in os.listdir(self.p("out"))
+                          if f.endswith(".tif")], [])
+        with open(os.path.join(self.p("out"), "virtual-sensor.json")) as fh:
+            sensor = json.load(fh)
+        self.assertEqual(sensor["name"], "satellite-sentinel-2-ndvi")
+        self.assertEqual(sensor["quantity"], "NDVI")
+        self.assertEqual(sensor["formula"], "(NIR - red) / (NIR + red)")
+        self.assertEqual(sensor["collection"], "sentinel-2-l2a")
+        self.assertIn("periodic virtual sensor", sensor["validity_window"])
+
+    def test_max_cloud_filters(self):
+        # Default --max-cloud 20: the 45% scene drops; the scene with no
+        # cloud value is kept (an unmeasured cloud cover is a gap, not a
+        # reason to drop).
+        code, out, err = run("fetch_satellite.py",
+                             *self.base_args("--check"))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(out["scenes"]), 2)
+        self.assertEqual([s["cloud_cover"] for s in out["scenes"]],
+                         [12.5, None])
+
+    def test_bad_bbox_rejected(self):
+        code, out, err = run("fetch_satellite.py",
+                             "--source", "sentinel-2",
+                             "--bbox", "1,2,3",
+                             "--start", "2026-08-01", "--end", "2026-08-31",
+                             "--check")
+        self.assertNotEqual(code, 0)
+        self.assertIn("bbox", err)
+
+    def test_unreachable_catalog_clear_error(self):
+        code, out, err = run("fetch_satellite.py",
+                             "--source", "sentinel-2",
+                             "--bbox", "85.5,28.2,86.0,28.5",
+                             "--start", "2026-08-01", "--end", "2026-08-31",
+                             "--catalog-url", "http://127.0.0.1:9/stac/v1",
+                             "--check")
+        self.assertEqual(code, 3, err)
+        self.assertIn("unreachable", err)
+
+    def test_copernicus_landsat_rejected(self):
+        code, out, err = run("fetch_satellite.py",
+                             *self.base_args("--catalog", "copernicus",
+                                            "--source", "landsat",
+                                            "--check"))
+        self.assertEqual(code, 2, err)
+        self.assertIn("not served", err)
+
+    def test_help(self):
+        code, out, err = run("fetch_satellite.py", "--help")
+        self.assertEqual(code, 0, err)
+
+
+class TestRegisteredVirtualSensors(unittest.TestCase):
+    """T83: registered virtual sensors (Variant B, 2026-10-28). Six
+    registrations in the worked example, each with a published formula,
+    a named calibration station, and a skill score or an explicit honest
+    gap; Sentinel-1 and Open-Meteo in the source list."""
+
+    def test_six_registrations_present(self):
+        ex = rtext(os.path.join(ROOT, "references",
+                                "worked-examples-new-sections.md"))
+        self.assertIn("## Registered virtual sensors — worked example:",
+                      ex)
+        self.assertEqual(ex.count("### Sensor "), 6)
+        for name in ("beira-chla-s2-ndci", "beira-wst-landsat-st",
+                     "beira-extent-s2-mndwi", "beira-turbidity-s2-dogliotti",
+                     "beira-zsd-s2-qaa", "langtang-displacement-s1-insar"):
+            self.assertIn(name, ex)
+
+    def test_formulas_scores_and_gaps(self):
+        ex = rtext(os.path.join(ROOT, "references",
+                                "worked-examples-new-sections.md"))
+        # Published formulas, as registered (no invented coefficients).
+        for formula in ("194.325", "86.115", "228.1 FNU", "3078.9 FNU",
+                        "Min(Kd", "MNDWI = (Green",
+                        "split-window algorithm",
+                        "Δd = λ·Δφ / (4π)"):
+            self.assertIn(formula, ex)
+        # Published skill scores (generic validation, or Beira-local).
+        for score in ("RMSE 1.43 µg/L", "RMSE 0.87 K", "RMSE 0.74 K",
+                      "RMSE 20.5 FNU", "RMSE 0.049 m", "±10 mm"):
+            self.assertIn(score, ex)
+        # Every registration without a local score says so honestly:
+        # five sensor-level [NEXT DATA] gaps, plus one mention in the
+        # section intro; each of the six sensors carries a skill-score
+        # field. (Phrases checked on whitespace-normalised text: the
+        # file hard-wraps long lines.) The tail is bounded at the §30
+        # section, which follows the sensor section in the file.
+        tail = ex.split("## Registered virtual sensors — worked example:",
+                        1)[1].split("\n## §30 — Forest", 1)[0]
+        self.assertEqual(tail.count("[NEXT DATA]"), 6)
+        self.assertEqual(tail.count("Skill score (SS_RMSE)"), 6)
+        flat = " ".join(ex.split())
+        self.assertIn("no in-situ turbidity", flat)
+        self.assertIn("no GNSS station", flat)
+
+    def test_sources_and_data_sources_updated(self):
+        src = rtext(os.path.join(ROOT, "references",
+                                 "sources-new-sections.md"))
+        self.assertIn("## Sources — registered virtual sensors "
+                      "(Variant B, 2026-10-28)", src)
+        self.assertIn("10.1016/j.rse.2014.09.020", src)
+        self.assertIn("10.3390/w16111616", src)
+        self.assertIn("0.049 m", src)
+        ds = rtext(os.path.join(ROOT, "references", "data-sources.md"))
+        self.assertIn("| Sentinel-1 (Copernicus) | SAR C-band", ds)
+        self.assertIn("| Open-Meteo (open-meteo.com) | Forecast weather API",
+                      ds)
+        self.assertIn("no API key", ds)
+
+
+class TestSensorRegistry(unittest.TestCase):
+    """T88: full sensor registry (2026-10-28). 59 rows (R01-R59) mapping
+    every source in data-sources.md to the ecosystems and indicator rows
+    it serves, in exactly four tiers; the seven registered virtual
+    sensors carried verbatim; no invented formula, score, or station."""
+
+    EXPECTED_SOURCES = (
+        "Sentinel-2", "Sentinel-5P", "Sentinel-1", "Landsat 8/9",
+        "MODIS / VIIRS", "Copernicus DEM", "ERA5",
+        "National meteo services", "OpenAQ", "CAMS", "Open-Meteo",
+        "National hydrology gauges", "GRDC", "GEMStat",
+        "JRC Global Surface Water", "GRACE", "GLOSS",
+        "Agency and institute archives", "Client and field sampling",
+        "GBIF", "iNaturalist", "eBird", "National red lists",
+        "Movebank", "Museum", "SoilGrids", "ESDAC",
+        "National soil and cadastre maps", "CORINE", "SensorThings",
+        "WaterML 2.0", "Darwin Core", "EML", "STAC", "CF conventions",
+        "RO-Crate", "Evidence platforms", "In-situ sensors",
+        "Farm records", "Prior studies and EIA reports",
+        "NASA FIRMS", "Global Forest Watch", "ESA WorldCover",
+        "OpenStreetMap", "GPM IMERG", "SMAP",
+        "Copernicus Marine Service", "WDPA",
+    )
+
+    def _rows(self):
+        reg = rtext(os.path.join(ROOT, "references", "sensor-registry.md"))
+        rows = [ln for ln in reg.splitlines()
+                if re.match(r"\| R\d\d \|", ln)]
+        parsed = []
+        for ln in rows:
+            cells = [c.strip() for c in ln.split("|")]
+            parsed.append(cells)
+        return reg, parsed
+
+    def test_registry_exists_and_counts(self):
+        reg, rows = self._rows()
+        self.assertEqual(len(rows), 59)
+        ids = [c[1] for c in rows]
+        self.assertEqual(ids, ["R%02d" % i for i in range(1, 60)])
+        tiers = collections.Counter(c[7] for c in rows)
+        self.assertEqual(tiers["Core"], 1)
+        self.assertEqual(tiers["Conditional"], 35)
+        self.assertEqual(tiers["Research"], 3)
+        self.assertEqual(tiers["Context-only"], 20)
+        self.assertEqual(len(rows[0]) - 2, 11)
+
+    def test_every_source_appears(self):
+        reg, _ = self._rows()
+        self.assertEqual(len(self.EXPECTED_SOURCES), 48)
+        for name in self.EXPECTED_SOURCES:
+            self.assertIn(name, reg, "source missing from registry: %s"
+                          % name)
+
+    def test_section_coverage(self):
+        _, rows = self._rows()
+        served = set()
+        for c in rows:
+            served.update(int(x) for x in
+                          re.findall(r"§(\d+)", c[6]))
+        # Every indicator-bearing section is served; §§18-20 are meta
+        # sections (quick sets, metadata, watch rules), served by the
+        # catalogue itself, never by a sensor row.
+        self.assertEqual(sorted(served),
+                         list(range(1, 18)) + list(range(21, 33)))
+
+    def test_tiers_only_allowed(self):
+        _, rows = self._rows()
+        for c in rows:
+            self.assertIn(c[7], ("Core", "Conditional", "Research",
+                                 "Context-only"), c[1])
+
+    def test_core_has_formula_and_cited_score(self):
+        _, rows = self._rows()
+        cores = [c for c in rows if c[7] == "Core"]
+        self.assertEqual(len(cores), 1)
+        core = cores[0]
+        self.assertEqual(core[1], "R05")
+        self.assertIn("Min(Kd)", core[4])
+        self.assertIn("0.049 m", core[9])
+        self.assertIn("Prasad", core[9])
+        # Every numeric score claim in the table carries a citation.
+        for c in rows:
+            score = c[9]
+            if re.search(r"\d", score) and (
+                    "RMSE" in score or "%" in score
+                    or "accuracy" in score.lower()):
+                self.assertRegex(" ".join(c),
+                                 r"et al\.|20\d\d|Prasad|Hansen|Reichle"
+                                 r"|Pekel|Eon|Dogliotti|Mishra|Molkov"
+                                 r"|Lee",
+                                 "uncited numeric score in %s" % c[1])
+
+    def test_seven_registered_sensors_verbatim(self):
+        reg, _ = self._rows()
+        for name in ("beira-chla-s2-ndci", "beira-wst-landsat-st",
+                     "beira-extent-s2-mndwi", "beira-turbidity-s2-dogliotti",
+                     "beira-zsd-s2-qaa", "langtang-displacement-s1-insar"):
+            self.assertIn(name, reg)
+        for value in ("194.325", "86.115", "228.1 FNU", "3078.9 FNU",
+                      "MNDWI = (Green", "split-window algorithm",
+                      "0.049 m", "0.87 K", "0.74 K", "20.5 FNU",
+                      "1.43 µg/L", "±10 mm"):
+            self.assertIn(value, reg)
+        self.assertIn("No seventh sensor with a formula exists",
+                      " ".join(reg.split()))
+
+    def test_new_sources_in_data_sources_and_skill_pointer(self):
+        ds = rtext(os.path.join(ROOT, "references", "data-sources.md"))
+        for name in ("NASA FIRMS", "Global Forest Watch / Hansen",
+                     "ESA WorldCover", "OpenStreetMap", "GPM IMERG",
+                     "SMAP", "Copernicus Marine Service", "WDPA"):
+            self.assertIn(name, ds)
+        self.assertIn("references/sensor-registry.md", ds)
+        self.assertIn("Russian Federation", ds)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertIn("references/sensor-registry.md", skill)
+
+
+class TestUnverifiedFlagsClosed(unittest.TestCase):
+    """T89: no live [unverified] flag remains in the catalogue; both closures
+    carry verified anchors (2026-10-28, on her word "Заверши 2 пометки")."""
+
+    def test_no_live_unverified_flag_in_indicator_rows(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        rows = [l for l in text.splitlines() if l.startswith("|")]
+        self.assertTrue(rows)
+        for row in rows:
+            self.assertNotIn("[unverified", row)
+
+    def test_marmot_row_closed_with_verified_anchors(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        for s in ("Enkhsaikhan et al. 2021", "10.5564/pib.v37i1.3137",
+                  "0.63 marmots/ha", "10.1038/s41598-023-38966-1",
+                  "Endangered (IUCN criterion A2ad)", "Least Concern",
+                  "no universal density threshold exists"):
+            self.assertIn(s, text)
+
+    def test_green_space_row_closed_with_verified_anchors(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        for s in ("D.M. 1444/1968", "18 m² per inhabitant",
+                  "10.3389/frsc.2025.1542464",
+                  "10.1016/j.landurbplan.2025.105301",
+                  "0.5–1 ha within 300 m"):
+            self.assertIn(s, text)
+        src = rtext(os.path.join(ROOT, "references", "sources-new-sections.md"))
+        self.assertNotIn("REMAINS [unverified]", src)
+        self.assertIn("Both items this section had marked [unverified] are now RESOLVED", src)
+        self.assertIn("RESOLVED 28 October 2026 — the marmot-density item is closed", src)
+
+
+class TestThresholdsGuideApplied(unittest.TestCase):
+    def test_file_exists_with_contents(self):
+        path = os.path.join(ROOT, "references", "thresholds.md")
+        self.assertTrue(os.path.exists(path))
+        text = rtext(path)
+        head = "\n".join(text.splitlines()[:15])
+        self.assertIn("## Contents", head)
+        self.assertIn("21 indicators", text)
+        self.assertIn("7 jurisdictions", text)
+        for section in ("## 0.", "## 7.", "## 8.", "## 9.", "## 10.", "## 11."):
+            self.assertIn(section, text)
+
+    def test_anchor_hierarchy_and_rules(self):
+        text = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        for s in ("Иерархия якорей", "более строгий",
+                  "Пороги по назначению",
+                  "Оперативный порог раннего предупреждения",
+                  "70–80%"):
+            self.assertIn(s, text)
+        ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        for s in ("Anchor hierarchy", "Thresholds by use",
+                  "Operational early-warning level",
+                  "the stricter binding standard governs the red band",
+                  "Threshold anchors for the 21 core indicators"):
+            self.assertIn(s, ind)
+
+    def test_key_anchors_present(self):
+        text = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        for s in ("50 мг/л", "5 мкг/м³", "4 ≤ DHW < 8", "10 мкг/л",
+                  "TSI 0–40", "0,01 мг/л", "Directive (EU) 2020/2184",
+                  "WHO Global Air Quality Guidelines, 2021"):
+            self.assertIn(s, text)
+
+    def test_provisional_flags_preserved(self):
+        text = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        self.assertEqual(text.count("[provisional"), 25)
+        for s in ("СанПиН 1.2.3685-21 [provisional]", "7,1 [provisional]",
+                  "32,0 [provisional]",
+                  "[provisional — по вторичному пересказу]",
+                  "[provisional — классы по вторичному источнику]"):
+            self.assertIn(s, text)
+
+    def test_russian_lead_not_entered(self):
+        text = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        lead_row = [ln for ln in text.splitlines()
+                    if ln.startswith("| Свинец, питьевая вода")]
+        self.assertEqual(len(lead_row), 1)
+        self.assertIn("Не проверено", lead_row[0])
+        self.assertIn("значение для свинца не внесено из-за противоречия источников",
+                      text)
+        # the contested 0.03 figure appears for lead only where the guide
+        # says it is NOT entered, never as an adopted limit
+        lead_lines = [ln for ln in text.splitlines()
+                      if "0,03 мг/л" in ln and "Свинец" in ln
+                      or "0,03 мг/л" in ln and "свинца не внесено" in ln]
+        self.assertEqual(len(lead_lines), 2)
+        for ln in lead_lines:
+            self.assertIn("не внесено", ln)
+
+    def test_no_unverified_flags(self):
+        text = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        self.assertNotIn("[unverified]", text)
+
+    def test_skill_and_indicators_pointers(self):
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertLessEqual(len(skill.splitlines()), 500)
+        self.assertIn("references/thresholds.md", skill)
+        self.assertIn("decision support", skill)
+        self.assertIn("ЛПР", skill)
+        ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertIn("references/thresholds.md", ind)
+
+    def test_open_items_preserved(self):
+        text = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        self.assertIn("Что остаётся открытым", text)
+        for s in ("Россия — воздух", "Море — растворённый кислород",
+                  "не внесён", "Япония — воздух"):
+            self.assertIn(s, text)
+
+
+class TestRemainingNextDataGapsVerified(unittest.TestCase):
+    """T91, 2026-10-28: the three priority [NEXT DATA] gaps (Beira-local
+    SS_RMSE for Sensors 1-4, Langtang InSAR ground truth, Daursky marmot
+    density) are closed as verified negative results, not as values —
+    each with its reason and its named next data; nothing is invented."""
+
+    def test_beira_gaps_are_verified_negatives_not_bare_flags(self):
+        ex = rtext(os.path.join(ROOT, "references", "worked-examples-new-sections.md"))
+        for s in ("verified 2026-10-28 (T91)",
+                  "never applied NDCI or any chlorophyll-a retrieval",
+                  "never used Landsat surface",
+                  "is a single total, not a shoreline polygon or a mask",
+                  "structurally impossible from the published record"):
+            self.assertIn(s, ex)
+        reg = rtext(os.path.join(ROOT, "references", "sensor-registry.md"))
+        self.assertEqual(reg.count("verified 2026-10-28 (T91)"), 10)
+
+    def test_no_invented_beira_local_rmse(self):
+        import re as _re
+        for name in ("worked-examples-new-sections.md", "sensor-registry.md"):
+            text = rtext(os.path.join(ROOT, "references", name))
+            for m in _re.finditer(r"Beira-local SS_RMSE[\s\S]{0,200}", text):
+                window = " ".join(m.group(0).split())
+                self.assertTrue("[NEXT DATA]" in window
+                                or "verified 2026-10-28 (T91)" in window,
+                                window)
+            self.assertNotIn("Beira-local SS_RMSE: 0.", text)
+
+    def test_supplement_maps_correction(self):
+        ex = rtext(os.path.join(ROOT, "references", "worked-examples-new-sections.md"))
+        self.assertIn("interpolated maps (supplement Figs. S7–S8", ex)
+        self.assertIn("does not appear in the supplement list", ex)
+        self.assertNotIn("values in the paper's supplement, Figs. S7–S9", ex)
+        reg = rtext(os.path.join(ROOT, "references", "sensor-registry.md"))
+        self.assertNotIn("Figs. S7–S9", reg)
+
+    def test_langtang_ground_truth_never_retrospective(self):
+        reg = rtext(os.path.join(ROOT, "references", "sensor-registry.md"))
+        for s in ("10.1007/s12524-026-02611-x",
+                  "no ground truth exists for that slope",
+                  "can ever be collected retrospectively",
+                  "cross-sensor, not ground truth"):
+            self.assertIn(s, reg)
+        src = rtext(os.path.join(ROOT, "references", "sources-new-sections.md"))
+        for s in ("Roy P., Majumdar R., Chauhan P. et al.",
+                  "Sah A. K.", "non-peer-reviewed"):
+            self.assertIn(s, src)
+
+    def test_daursky_marmot_density_still_open_with_comparators(self):
+        ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        for s in ("still unpublished", "1–7 ind/ha",
+                  "6819035", "1.27 ind/ha", "Todgerel 2020",
+                  "the primary Todgerel 2020 document was not consulted", "«Летопись природы»"):
+            self.assertIn(s, ind)
+        self.assertNotIn("provisional", ind)
+        ex = rtext(os.path.join(ROOT, "references", "worked-examples-new-sections.md"))
+        self.assertIn("Hustai National Park, ca. 1.27 ind/ha", ex)
+        self.assertIn("not a Daursky value", ex)
+
+    def test_registry_rows_carry_the_t91_verdict(self):
+        reg = rtext(os.path.join(ROOT, "references", "sensor-registry.md"))
+        for row in ("| R02 |", "| R03 |", "| R04 |", "| R09 |", "| R12 |"):
+            line = [ln for ln in reg.splitlines() if ln.startswith(row)]
+            self.assertEqual(len(line), 1, row)
+            self.assertIn("verified 2026-10-28 (T91)", line[0], row)
+
+
+class TestQuickFixesOct28(unittest.TestCase):
+    """T92, 2026-10-28: quick fixes from the external 7.5/10 audit (verified
+    against the files first — two of its points were wrong: the frontmatter
+    error is only in SKILL.ru.md, and no code checks a '[NO DATA]' literal).
+    Description rewritten for v2.8, script table moved to references/,
+    SKILL.ru.md comment moved below the frontmatter."""
+
+    def test_description_covers_v28_domains(self):
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            fm = text.split("---\n", 2)[1]
+            import yaml as _yaml
+            desc = _yaml.safe_load(fm)["description"]
+            self.assertLessEqual(len(desc), 1024)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        desc = skill.split("---\n", 2)[1]
+        for s in ("forests", "peatlands", "marine and coastal",
+                  "urban ecosystems", "deserts", "tundra and cryosphere",
+                  "livestock farms", "cropland"):
+            self.assertIn(s, desc)
+
+    def test_script_table_moved_to_references(self):
+        table = rtext(os.path.join(ROOT, "references", "scripts.md"))
+        self.assertEqual(table.count("| `scripts/"), 17)
+        for s in ("scripts/fetch_satellite.py", "scripts/trend_test.py",
+                  "scripts/mismatch.py", "scripts/registry.py"):
+            self.assertIn(s, table)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertLessEqual(len(skill.splitlines()), 500)
+        self.assertIn("references/scripts.md", skill)
+        # the full table no longer lives in SKILL.md
+        self.assertEqual(skill.count("| `scripts/"), 0)
+
+    def test_russian_frontmatter_starts_on_line_one(self):
+        text = rtext(os.path.join(ROOT, "SKILL.ru.md"))
+        self.assertTrue(text.startswith("---\n"))
+        self.assertNotIn("<!--", text.split("---\n", 2)[1])
+        self.assertIn("<!-- Русский перевод SKILL.md, версия 2.8. -->",
+                      text.split("---\n", 2)[2][:200])
+
+
+class TestSafetyGatePfasMicroplastics(unittest.TestCase):
+    """T93, 2026-10-28: PFAS and microplastics in the circular-economy
+    safety gate (on her word "Да, добавь PFAS и микро пластик"). The
+    catalogue already carried both as conditional panels (§6); the gate
+    did not. PFAS anchors are jurisdictional law (US EPA NPDWR Apr 2024;
+    EU Directive 2020/2184), checked against the regulators' published
+    values; no numeric microplastics limit is invented — the gate checks
+    the method and the reported load, and [НЕТ ДАННЫХ] blocks."""
+
+    def test_gate_names_pfas_and_microplastics(self):
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            self.assertIn("PFAS", text)
+            self.assertIn("микропластик", text.lower())
+            gate = text.split("Template 2" if fname == "SKILL.md"
+                               else "Шаблон 2")[1]
+            self.assertIn("PFAS", gate)
+            self.assertIn("микропластик", gate.lower())
+
+    def test_pfas_anchors_are_jurisdictional(self):
+        # T95 (2026-10-28): the numbers moved out of the gate into
+        # references/thresholds.md §1.8; the gate keeps the rule only.
+        th = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        for s in ("4,0 нг/л", "0,1 мкг/л", "0,5 мкг/л", "2020/2184",
+                  "NPDWR", "PFOA", "PFOS", "DüMV", "PFAS4 15"):
+            self.assertIn(s, th)
+        # the 2025 EPA reconsideration is disclosed, not hidden
+        # T94 (2026-10-28): the May 2025 wording was wrong — May 2025 was
+        # only EPA's announcement of intent; the formal proposal is
+        # 20 May 2026 (Federal Register 2026-10085).
+        self.assertIn("20 мая 2026", th)
+        self.assertNotIn("май 2025", th)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertNotIn("май 2025", skill)
+
+    def test_microplastics_gate_is_method_not_number(self):
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        gate = skill.split("Template 2")[1].split("## Deterministic")[0]
+        self.assertIn("числового норматива не изобретается", gate)
+        for s in ("гармонизированный метод", "диапазон размеров",
+                  "контрольные пробы", "[НЕТ ДАННЫХ]"):
+            self.assertIn(s, gate)
+
+    def test_non_negotiable_five_names_both(self):
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            self.assertIn("PFAS", text)
+            self.assertIn("микропластик", text.lower())
+
+
+class TestSafetyGatePfasMatrices(unittest.TestCase):
+    """T94, 2026-10-28: Claude Anthropic's point (e) corrections to the
+    PFAS gate, verified against the primary sources before applying.
+    The May 2025 date was wrong (that was only an announcement of
+    intent); the formal rescission proposal is 20 May 2026, Federal
+    Register 2026-10085, comments to 20 Jul 2026, not final as of Aug
+    2026. Drinking-water ng/L limits do not apply to solid sediment in
+    µg/kg — the gate now carries sediment anchors."""
+
+    def test_rescission_date_is_may_2026_not_2025(self):
+        # T95: the dates live in thresholds.md §1.8 now, not in the gate.
+        th = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        for s in ("20 мая 2026", "2026-10085", "20 июля 2026"):
+            self.assertIn(s, th)
+        self.assertNotIn("май 2025", th)
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            self.assertNotIn("май 2025",
+                              rtext(os.path.join(ROOT, fname)))
+
+    def test_four_values_marked_provisional(self):
+        # T95: the values and their [provisional] marks live in §1.8.
+        th = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        self.assertIn("10 нг/л", th)
+        self.assertIn("индекс опасности 1 для смесей [provisional]", th)
+        self.assertIn("все шесть MCL действуют", th)
+
+    def test_sediment_anchors_present_and_water_limits_excluded(self):
+        # T95: anchors in §1.8; the "do NOT apply to solids" rule stays
+        # in the gate itself.
+        th = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        for s in ("DüMV", "100", "50", "Danish EPA", "PFAS4 15",
+                  "1 мкг/кг", "20 мкг/кг"):
+            self.assertIn(s, th)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        gate = skill.split("Template 2")[1].split("## Deterministic")[0]
+        self.assertIn("НЕ применимы", gate)
+
+    def test_microplastics_row_unchanged(self):
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        gate = skill.split("Template 2")[1].split("## Deterministic")[0]
+        self.assertIn("числового норматива не изобретается", gate)
+
+
+class TestGateThresholdRuleOct28(unittest.TestCase):
+    """T95, 2026-10-28: Claude Anthropic's 8/10 review, verified point by
+    point before applying, with the author's two amendments from Claude's
+    own follow-up. (1) The gate rule: binding standard = red + block;
+    guidance/draft = yellow, no block; no binding standard -> the
+    threshold is chosen by the Stage 1 hierarchy and fixed in the Object
+    Passport BEFORE data arrives, and becomes red for this build; no
+    measurement ([НЕТ ДАННЫХ]) still blocks. (2) The brand-candidate line
+    is removed from SKILL.md entirely (it lives in CHANGELOG now).
+    PFAS numbers moved to references/thresholds.md §1.8; jurisdiction
+    count 5 -> 7 (Germany, Denmark added)."""
+
+    def test_pfas_numbers_live_in_thresholds_not_skill(self):
+        th = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        self.assertIn("### 1.8. PFAS", th)
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            gate = text.split("Template 2" if fname == "SKILL.md"
+                               else "Шаблон 2")[1].split("## Deterministic" if fname == "SKILL.md" else "## Схемы ввода-вывода")[0]
+            self.assertIn("references/thresholds.md", gate)
+            self.assertIn("§1.8", gate)
+            for s in ("4,0 нг/л", "2026-10085", "DüMV", "PFAS4 15"):
+                self.assertNotIn(s, gate)
+
+    def test_gate_rule_covers_both_cases(self):
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        gate = skill.split("Template 2")[1].split("## Deterministic")[0]
+        for s in ("красный уровень", "жёлтый уровень",
+                  "ДО получения данных", "красным",
+                  "для этой сборки", "блокирует",
+                  "поток всегда", "[НЕТ ДАННЫХ]"):
+            self.assertIn(s, gate)
+
+    def test_brand_line_removed_from_skill(self):
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            self.assertNotIn("ADIS", text)
+            self.assertNotIn("кандидаты", text)
+
+    def test_description_covers_steppe_and_aquaculture(self):
+        en = rtext(os.path.join(ROOT, "SKILL.md"))
+        desc_en = en.split('description: "')[1].split('"')[0]
+        self.assertIn("steppe", desc_en)
+        self.assertIn("aquaculture", desc_en)
+        ru = rtext(os.path.join(ROOT, "SKILL.ru.md"))
+        desc_ru = ru.split('description: "')[1].split('"')[0]
+        self.assertIn("степь", desc_ru)
+        self.assertIn("аквакультура", desc_ru)
+
+    def test_jurisdiction_count_seven(self):
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            self.assertNotIn("5 jurisdictions", text)
+            self.assertNotIn("5 юрисдикций", text)
+        th = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        self.assertIn("21 indicators", th)
+        self.assertIn("7 jurisdictions", th)
+        self.assertIn("Germany, Denmark", th)
+
+    def test_gap_markers_defined(self):
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            self.assertIn("[NEXT DATA]", text)
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertIn("Two gap markers", skill)
+
+    def test_date_updated_to_oct_28(self):
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            self.assertIn('last-reviewed: "2026-10-28"', text)
+            self.assertIn("2.8 (2026-10-28)", text)
+            self.assertNotIn("2026-10-27", text)
+
+    def test_stage2_satellite_scope(self):
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertIn("returns scenes and NDVI, not water transparency/SDD",
+                      skill)
+        self.assertIn("signed through the data API", skill)
+
+
+class TestTablesClosedOct28(unittest.TestCase):
+    """T96, 2026-10-28: Claude Anthropic's full-candidate review (8/10),
+    verified against primary sources before applying. The §31 table was
+    not closed by a blank line (L1947-1948), so the prose after it rendered
+    as table rows; the suite had no check for it. This class pins the
+    closure rule for every table, the §31 regression, the §30-§32 format
+    alignment (12 watch-levels subheads and 12 does-NOT-do subheads), and
+    the gate qualification from the same review: the stricter *binding*
+    standard governs red, guidance and drafts stay yellow."""
+
+    def test_every_table_run_followed_by_blank_line(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        lines = text.split("\n")
+        runs = 0
+        i = 0
+        while i < len(lines):
+            if lines[i].startswith("|"):
+                runs += 1
+                j = i
+                while j < len(lines) and lines[j].startswith("|"):
+                    j += 1
+                if j < len(lines):
+                    self.assertEqual(
+                        lines[j], "",
+                        f"table run ending at line {j} is not followed by a blank line: {lines[j][:80]!r}")
+                i = j
+            else:
+                i += 1
+        self.assertEqual(runs, 29, "table count changed — check the catalogue")
+
+    def test_section_31_table_closed_regression(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertIn("as the diagnostic group |\n\n### How §20 watch levels apply here", text)
+
+    def test_watch_levels_subheads_twelve_each(self):
+        text = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertEqual(text.count("### How §20 watch levels apply here"), 12)
+        self.assertEqual(text.count("### What this section does NOT do"), 12)
+        self.assertNotIn("What this section does **not** do:", text)
+
+    def test_stricter_binding_standard_qualifies_red(self):
+        skill = rtext(os.path.join(ROOT, "SKILL.md"))
+        self.assertIn("stricter binding standard governs red, guidance and drafts stay yellow",
+                      skill)
+        self.assertNotIn("the stricter governs red", skill)
+        ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.assertIn("the stricter binding standard governs the red band; guidance and drafts stay yellow",
+                      ind)
+        self.assertNotIn("the stricter governs the red band", ind)
+
+
+class TestT96FollowUpOct28(unittest.TestCase):
+    """T97, 2026-10-28: Claude Anthropic's re-review of the T96 build
+    (8.5/10). The T96 archive failed its own lint (a backticked path to the
+    planned, not-yet-written gate_check.py in CHANGELOG.md); the §24 Tier 1
+    factors were re-swapped (cropland and grassland values exchanged); the
+    source list and the GEPIS worked example still carried the figures
+    T96 corrected in the catalogue; one §25 sentence was broken; the §28
+    topsoil/subsoil split was attributed to the 2024 report. This class
+    pins each fix so it cannot drift back."""
+
+    def setUp(self):
+        self.ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.src = rtext(os.path.join(ROOT, "references", "sources-new-sections.md"))
+        self.wex = rtext(os.path.join(ROOT, "references", "worked-examples-new-sections.md"))
+
+    def test_tier1_factors_match_ipcc_table_2_1(self):
+        self.assertIn(
+            "cropland: 7.9 t CO₂-C/ha/yr boreal and temperate, 14.0 tropical; "
+            "grassland: 5.7 boreal; temperate 5.3 nutrient-poor, 6.1 nutrient-rich "
+            "deep-drained, 3.6 nutrient-rich shallow-drained; 9.6 tropical", self.ind)
+        for wrong in ("cropland 5.7", "grassland 7.9", "5.3 warm temperate"):
+            self.assertNotIn(wrong, self.ind)
+        self.assertIn("cropland 7.9 boreal and temperate", " ".join(self.src.split()))
+
+    def test_sources_synced_with_catalogue(self):
+        flat = " ".join(self.src.split())
+        for stale in ("Peatland Code v1.2 (2022) — five", "peak in the 1990s by 2021",
+                      "NDVI-to-FVC scaling; the pixel-dichotomy form"):
+            self.assertNotIn(stale, flat)
+        for fresh in ("Peatland Code v2.1 (October 2024", "Gutman, G. & Ignatov, A. (1998)",
+                      "Fluet-Chouinard, E. et al. 2023", "4.3 M ha in 2025",
+                      "21 in Nepal, 25 in the Tibet", "2022/23 Maha 3,731 kg/ha",
+                      "peak in 2003, about 490,000", "One Earth* 4(12)"):
+            self.assertIn(fresh, flat)
+
+    def test_worked_example_yields_synced(self):
+        flat = " ".join(self.wex.split())
+        self.assertNotIn("~2,853 kg/ha and Yala", flat)
+        self.assertIn("2022/23 Maha 3,731 kg/ha and 2023 Yala 4,128 kg/ha", flat)
+
+    def test_dhw_sentence_whole(self):
+        self.assertIn("both limits are recorded in Phase 1 onboarding in the Object Passport. "
+                      "Shellfish-bed closures follow biotoxin", self.ind)
+        self.assertNotIn("not a DHW reading\nin Phase 1", self.ind)
+
+    def test_salt_split_labelled_2021(self):
+        self.assertIn("Depth split from the earlier FAO Global Map of Salt-Affected Soils (2021)",
+                      self.ind)
+
+    def test_cryosphere_quick_set(self):
+        flat = " ".join(self.ind.split())
+        self.assertIn("glacier mass balance where a glacier is present", flat)
+        self.assertIn("(active-layer thickness per §29)", flat)
+
+    def test_ru_stage1_carries_the_hierarchy(self):
+        ru = " ".join(rtext(os.path.join(ROOT, "SKILL.ru.md")).split())
+        self.assertIn("красный уровень задаёт более строгий обязательный норматив", ru)
+
+
+class TestAccuracySweepOct28(unittest.TestCase):
+    """T98, 2026-10-28: a further accuracy sweep of §21–§32 against primary
+    sources (Claude, at the author's request). Confirmed without change:
+    Taranger et al. 2015 (21 of 34 populations), EU 2024/1244 (500 t, from
+    1 January 2028), Morris et al. 2016 (0.3 cm/yr), ITS_LIVE v2.0
+    (The Cryosphere 19:3517), NYC CSO (398 outfalls, ~18 bn gal/yr),
+    Western Arctic peak (490,000 in 2003, ADF&G). Corrected: the Everglades
+    slope and remaining extent (the two cited sources differ — carried as
+    'about 2 inches per mile or less' and 'about half'); the Norwegian
+    density rule cited by title (paragraph confirmed as §19 in T99); the copper row
+    given its ASC indicator and value; the §23 grazing rows reduced to
+    cross-references to §22 plus the farm reading; draft wording cleared
+    from the source list."""
+
+    def setUp(self):
+        self.ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.src = rtext(os.path.join(ROOT, "references", "sources-new-sections.md"))
+        self.wex = rtext(os.path.join(ROOT, "references", "worked-examples-new-sections.md"))
+
+    def test_everglades_slope_and_extent(self):
+        flat = " ".join(self.ind.split())
+        self.assertIn("less than two inches per mile (≈3 cm/km; Florida Museum", flat)
+        self.assertNotIn("about 2.5 inches per mile (≈4 cm/km)", flat)
+        self.assertIn("about half remains", flat)
+        self.assertNotIn("just over half remains, mostly broken", flat)
+        self.assertNotIn("just over half remains today", " ".join(self.wex.split()))
+
+    def test_norway_density_cited_by_title(self):
+        self.assertNotIn("Norwegian aquaculture regulation, §19", self.ind)
+        self.assertIn("akvakulturdriftsforskriften", self.ind)
+
+    def test_copper_row_has_asc_indicator(self):
+        self.assertIn("ASC Salmon Standard, Indicator 4.7.4", self.ind)
+        self.assertIn("34 mg/kg dry weight", self.ind)
+        self.assertIn("Indicator 4.7.4", self.src)
+
+    def test_section_23_grazing_rows_are_cross_references(self):
+        s23 = self.ind.split("## 23. Livestock farm")[1].split("## 24. Peatlands")[0]
+        self.assertEqual(s23.count("Method and anchors as in §22")
+                         + s23.count("Method and starting anchor as in §22"), 3)
+        self.assertNotIn("Wyoming Extension B-1320", s23)
+        self.assertEqual(self.ind.count("Wyoming Extension B-1320"), 1)
+
+    def test_morris_cited_from_primary_abstract(self):
+        self.assertIn("Morris et al. 2016, Earth's Future — the abstract gives", self.ind)
+
+    def test_har_us_nuur_endemics_as_range(self):
+        self.assertNotIn("five endemic fish species (Ramsar", self.ind)
+        self.assertIn('carry "three to five"', self.ind)
+
+    def test_source_list_has_no_draft_wording(self):
+        self.assertNotIn("this draft", self.src)
+        self.assertNotIn("read before using", self.src)
+
+
+class TestIndependentVerificationOct28(unittest.TestCase):
+    """T99, 2026-10-28: Muse's independent verification of the T97/T98
+    build against primary sources. Correction to the record: the T96 Tier 1
+    'fix' swapped the cropland and grassland factors on a garbled FAOSTAT
+    PDF extraction; the pre-T96 values were correct, T97 restored them, and
+    T99 verified the assignment against ESSD Table 5 (Conchedda &
+    Tubiello 2020, reproducing the 2013 IPCC Wetlands Supplement Table
+    2.1). Verified and closed in T99, as corrected by T100/T101: DCS
+    revised paddy yields; the Laksvel mortality band (four colour
+    levels, Rapport fra Havforskningen 2025-40, §4.3); the Norwegian
+    density paragraph (§25 «Tetthet», FOR-2008-06-17-822 — T99's §19
+    cited the 1998 regulation's translation); USDA 2025/26 Sri Lanka
+    record 3.7 Mt (ERS RCS-26H) with area and yield as trade-press
+    values; the Danube Delta 2017 census count (9,581, institute figure
+    via Agerpres) leading, 5,500 kept as an older summary. Still
+    unverified: Todgerel 2020 (secondary citation only), the USDA area
+    and yield, the Danube census report itself."""
+
+    def setUp(self):
+        self.ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.src = rtext(os.path.join(ROOT, "references", "sources-new-sections.md"))
+        self.wex = rtext(os.path.join(ROOT, "references", "worked-examples-new-sections.md"))
+        self.chlog = rtext(os.path.join(ROOT, "CHANGELOG.md"))
+
+    def test_tier1_factors_correct_per_essd(self):
+        flat = " ".join(self.ind.split())
+        self.assertIn("cropland: 7.9 t CO₂-C/ha/yr boreal and temperate, 14.0 tropical", flat)
+        self.assertIn("grassland: 5.7 boreal", flat)
+        self.assertNotIn("cropland: 5.7", flat)
+        self.assertNotIn("grassland: 7.9", flat)
+
+    def test_laksvel_cited_from_primary_protocol(self):
+        row = [ln for ln in self.ind.splitlines() if "Daily and cumulative mortality rate" in ln][0]
+        self.assertIn("Rapport fra Havforskningen 2025-40", row)
+        self.assertIn("level 3 (red level)", row)
+        self.assertNotIn("Fish Health Report", row)
+        self.assertIn("Rapport fra Havforskningen 2025-40", self.src)
+        self.assertNotIn("via Norwegian Fish Health Report 2025", self.src)
+
+    def test_norway_density_paragraph_confirmed(self):
+        # T100: repointed. The full Norwegian text on FAOLEX (nor82122,
+        # FOR-2008-06-17-822) gives the rule as § 25 «Tetthet», not §19.
+        flat = " ".join(self.ind.split())
+        self.assertIn("FOR-2008-06-17-822", flat)
+        self.assertIn("§ 25 «Tetthet»", flat)
+        self.assertNotIn('§19: "Fish density', flat)
+        self.assertNotIn("confirm it on Lovdata", flat)
+
+    def test_usda_verified_against_ers(self):
+        # T100: repointed. ERS RCS-26H confirms production only; area and
+        # yield remain trade-press values citing USDA.
+        self.assertIn("ERS Rice Outlook RCS-26H", self.ind)
+        self.assertIn("not yet read from a USDA document", self.ind)
+        self.assertNotIn("which names the USDA FAS World Agricultural Production circular", self.ind)
+        self.assertNotIn("to be checked against the USDA", self.ind)
+        self.assertNotIn("not yet checked against the USDA release", self.src)
+
+    def test_danube_5500_source_recorded(self):
+        # T100: repointed. The 2017 census count leads; 5,500 is kept as an
+        # older summary figure.
+        flat = " ".join(self.ind.split())
+        self.assertIn("9,581 species recorded in the 2017 biodiversity census", flat)
+        self.assertIn("older summaries give over 5,500, Claudino-Sales 2018", flat)
+        self.assertIn("Claudino-Sales 2018", self.src)
+
+    def test_todgerel_still_flagged_secondary(self):
+        self.assertIn("primary Todgerel 2020 document was not consulted", self.ind)
+        self.assertIn("[provisional], a secondary citation", self.wex)
+
+    def test_changelog_records_t99_verification(self):
+        self.assertIn("Independent verification (T99, 2026-10-28)", self.chlog)
+        self.assertIn("T96 Tier 1", self.chlog)
+
+
+class TestT99FollowUpOct28(unittest.TestCase):
+    """T100, 2026-10-28: Claude's review of the T99 build (9.3/10), fixes
+    applied by Claude at the author's request. The Norwegian density rule
+    is § 25 «Tetthet» in the regulation's full text on FAOLEX (T99 had
+    asserted §19); the ERS Rice Outlook confirms the Sri Lanka production
+    only; the Danube Delta leads with the 2017 census count; the Laksvel
+    row gives the four colour levels from §4.3 (the protocol's 'very high'
+    descriptor for the >2% case is not repeated in the row);
+    the GEPIS example's 'roughly double the national average' no longer
+    holds with the DCS yields; the CHANGELOG corrects the T99 record on
+    Tier 1 and on which figures remain unverified."""
+
+    def setUp(self):
+        self.ind = rtext(os.path.join(ROOT, "references", "indicators.md"))
+        self.src = rtext(os.path.join(ROOT, "references", "sources-new-sections.md"))
+        self.wex = rtext(os.path.join(ROOT, "references", "worked-examples-new-sections.md"))
+        self.chlog = rtext(os.path.join(ROOT, "CHANGELOG.md"))
+
+    def test_norway_paragraph_25_everywhere(self):
+        for text in (self.ind, self.src):
+            flat = " ".join(text.split())
+            self.assertIn("§ 25 «Tetthet»", flat)
+        self.assertNotIn("the FAOLEX numbering is the one to quote", " ".join(self.src.split()))
+
+    def test_laksvel_four_levels(self):
+        row = [ln for ln in self.ind.splitlines() if "Daily and cumulative mortality rate" in ln][0]
+        for s in ("level 0 (green) below 0.3%", "level 1 (yellow) 0.3–0.7%",
+                  "level 2 (orange) 0.7–2%", "level 3 (red level) above 2%"):
+            self.assertIn(s, row)
+        self.assertNotIn("very high", row)
+        self.assertIn("monthly mortality above 2% is level 3 (red level); level 0 (green)",
+                      " ".join(self.src.split()))
+        self.assertNotIn("described as 'very high'", self.src)
+
+    def test_usda_area_and_yield_status(self):
+        flat = " ".join(self.src.split())
+        self.assertIn("Its pointer to the FAS World Agricultural Production circular sits in the Bangladesh paragraph", flat)
+        self.assertIn("area and yield not yet read from a USDA document", " ".join(self.wex.split()))
+
+    def test_gepis_ratio_matches_dcs_yields(self):
+        flat = " ".join(self.wex.split())
+        self.assertNotIn("roughly double the national average", flat)
+        self.assertIn("about one and a half times the national average (3.7–4.1 t/ha", flat)
+
+    def test_changelog_corrects_t99_record(self):
+        flat = " ".join(self.chlog.split())
+        self.assertIn("T99 follow-up (T100, 2026-10-28)", flat)
+        self.assertIn("no cool/warm temperate split", flat)
+
+    def test_readme_test_counts_agree(self):
+        en = rtext(os.path.join(ROOT, "README.md"))
+        ru = rtext(os.path.join(ROOT, "README.ru.md"))
+        n_en = re.search(r"\*\*Automated:\*\* (\d+) unit", en).group(1)
+        n_ru = re.search(r"\*\*Автоматически:\*\* (\d+) юнит", ru).group(1)
+        self.assertEqual(n_en, n_ru, "README.md and README.ru.md give different test counts")
+
+
+class TestT100FollowUpOct28(unittest.TestCase):
+    """T101, 2026-10-28: Muse's verification of the T100 build against
+    primary sources. Pins the corrections to the T100 record: DCS yields
+    restored as verified (Muse T99, primary DCS table); the Laksvel
+    'very high' descriptor is the protocol's own wording (§4.3) and the
+    T100 rationale is corrected; the T100 test class holds six tests."""
+
+    def setUp(self):
+        self.chlog = rtext(os.path.join(ROOT, "CHANGELOG.md"))
+        self.test_src = rtext(os.path.join(ROOT, "tests", "test_scripts.py"))
+
+    def test_changelog_restores_dcs_as_verified(self):
+        flat = " ".join(self.chlog.split())
+        self.assertIn("DCS yields restored as verified", flat)
+        self.assertIn("2022/23 Maha 3,731", flat)
+
+    def test_changelog_corrects_laksvel_rationale(self):
+        flat = " ".join(self.chlog.split())
+        self.assertIn("This must be described as very high", flat)
+
+    def test_t100_class_holds_six_tests(self):
+        block = self.test_src.split("class TestT99FollowUpOct28")[1].split("class TestT100FollowUpOct28")[0]
+        self.assertEqual(len(re.findall(r"def test_", block)), 6)
+
+
+class TestReleaseV28(unittest.TestCase):
+    """T102 (2026-10-28): release edits for v2.8. One release date, one DOI
+    across README (EN/RU) and CITATION.cff, the DOI is no longer the v2.3
+    record, no candidate wording left in references/thresholds.md, and the
+    README states the skill's scope (no process-model core until v2.9)."""
+
+    def setUp(self):
+        self.readme = rtext(os.path.join(ROOT, "README.md"))
+        self.readme_ru = rtext(os.path.join(ROOT, "README.ru.md"))
+        self.cff = rtext(os.path.join(ROOT, "CITATION.cff"))
+
+    def test_release_date_consistent(self):
+        self.assertIn("Current version: **2.8** (2026-10-28)", self.readme)
+        self.assertIn("Текущая версия: **2.8** (2026-10-28)", self.readme_ru)
+        self.assertIn('date-released: "2026-10-28"', self.cff)
+        chlog = rtext(os.path.join(ROOT, "CHANGELOG.md"))
+        self.assertIn("## v2.8 — 2026-10-28", chlog)
+
+    def test_one_doi_not_v23_record(self):
+        doi = re.search(r"^doi: (\S+)", self.cff, re.M).group(1)
+        self.assertNotEqual(doi, "10.5281/zenodo.23657185")
+        for text in (self.readme, self.readme_ru):
+            found = set(re.findall(r"10\.5281/zenodo\.\d+", text))
+            self.assertEqual(found, {doi})
+
+    def test_thresholds_no_candidate_wording(self):
+        th = rtext(os.path.join(ROOT, "references", "thresholds.md"))
+        self.assertIn("Status: part of release v2.8", th)
+        for stale in ("v2.8 candidate", "Not applied to the live skill",
+                      "кандидате v2.8", "предлагается BY-ND"):
+            self.assertNotIn(stale, th)
+
+    def test_readme_states_scope(self):
+        flat = " ".join(self.readme.split())
+        self.assertIn("does not yet ship a process model with data assimilation", flat)
+        flat_ru = " ".join(self.readme_ru.split())
+        self.assertIn("Процессной модели с усвоением данных в нём пока нет", flat_ru)
+        for text in (self.readme, self.readme_ru):
+            self.assertNotIn("ADIS", text)
 
 
 class TestPackage(unittest.TestCase):
