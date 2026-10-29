@@ -12,9 +12,9 @@
   sample DOI. (3) `references/thresholds.md` status header and closing
   line: candidate and "not applied to v2.7" wording removed; licence
   line states CC BY 4.0 (the BY-ND proposal was not adopted).
-  (4) README (EN/RU): scope line added under Status — the skill is the
-  method and guard-rail layer of a twin and does not yet ship a process
-  model with data assimilation (planned for v2.9); roadmap updated
+  (4) README (EN/RU): scope line added under Status — the skill builds and
+  runs the twin's evidence, validation and provenance layers and does not
+  yet ship a process model with data assimilation (planned for v2.9); roadmap updated
   (v2.7 cross-vendor round done; Sentinel-2 via STAC done as
   fetch_satellite.py; v2.9 items listed). (5) Brand line made neutral
   and identical in both READMEs (the EN and RU lists of candidate names

@@ -203,10 +203,10 @@ threshold or fails to beat a naive baseline.
   `python3 -m unittest discover -s tests` and `python3 tests/check_package.py`.
 - **Evaluation history:** every round, its scores, and the defects found and
   fixed are logged in [`tests/TESTS.md`](tests/TESTS.md).
-- **Scope:** the skill is the method and guard-rail layer of a twin. It
-  governs data quality, model admission against naive benchmarks,
-  pre-registered forecasts, safety gates, and provenance. It does not yet
-  ship a process model with data assimilation; that core is planned for
+- **Scope:** the skill builds and runs the twin's evidence, validation,
+  and provenance layers: data quality, model admission against naive
+  benchmarks, pre-registered forecasts, safety gates, and RO-Crate
+  packages. It does not yet ship a process model with data assimilation; that core is planned for
   version 2.9.
 - **Not yet done:** the behavioral tests have not been run on a live water
   body or site. That pilot is the next milestone, and the run log says so.
