@@ -461,6 +461,16 @@ sharing its > 0 boundary; the in-sample fit gets no verdict
 
 **Expected:** frontmatter `description` in SKILL.md and SKILL.ru.md names the v2.8 domains (forests, peatlands, marine and coastal waters, urban ecosystems, deserts, tundra and cryosphere, cropland, livestock farms) and stays within 1024 characters; the Deterministic Script I/O Schemas table lives in `references/scripts.md` with all 17 script rows including `scripts/fetch_satellite.py`, and SKILL.md carries only a short pointer (under 500 lines); SKILL.ru.md starts with `---` on line 1 and its HTML comment sits below the frontmatter.
 
+## T103 — TestDualLicenceV28 (2026-10-28, 4 tests)
+
+The author's licence decision: text and method under CC BY 4.0, code
+under Apache-2.0. Pins: `LICENSE-CODE` holds the canonical Apache License
+2.0 text and `LICENSE` still holds CC BY 4.0; both READMEs link both files
+and name both licences; the SKILL.md and SKILL.ru.md frontmatter `license`
+names both; CITATION.cff keeps `license: CC-BY-4.0` and its abstract states
+the code licence.
+Run: 347 tests, all pass; strict lint PASS (2026-10-28, T103).
+
 ## T102 — TestReleaseV28 (2026-10-28, 4 tests)
 
 Release edits for v2.8 by Claude Anthropic on the author's go-ahead to

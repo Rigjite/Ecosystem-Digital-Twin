@@ -5,6 +5,7 @@
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
+[![Code: Apache 2.0](https://img.shields.io/badge/code-Apache_2.0-blue)](LICENSE-CODE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23681769.svg)](https://doi.org/10.5281/zenodo.23681769)
 
 [English](README.md) | Русский
@@ -21,7 +22,7 @@
 для заказчика (хозяйство, управляющий водоёмом, природоохранный проект,
 муниципалитет) и **исследовательский инструмент** для собственной науки.
 
-Текущая версия: **2.8** (2026-10-28). Лицензия: CC BY 4.0.
+Текущая версия: **2.8** (2026-10-28). Лицензия: CC BY 4.0 для текста и метода, Apache-2.0 для кода.
 
 Название бренда решает автор; до тех пор навык называется описательно: «Ecosystem Digital Twin by Rigjita Baldanova».
 Текст навыка и справочники — на английском языке (`SKILL.md` и папка
@@ -199,7 +200,7 @@ python3 scripts/skill_scores.py continuous flows.csv \
 
 ## Статус и проверка
 
-- **Автоматически:** 343 юнит- и сквозных тестов и проверка пакета запускаются
+- **Автоматически:** 347 юнит- и сквозных тестов и проверка пакета запускаются
   при каждой отправке изменений (значок tests). Локально:
   `python3 -m unittest discover -s tests` и `python3 tests/check_package.py`.
 - **История оценок:** каждый раунд, его баллы, найденные и исправленные
@@ -235,8 +236,17 @@ DOI: [10.5281/zenodo.23681769](https://doi.org/10.5281/zenodo.23681769)
 
 ## Лицензия
 
-CC BY 4.0 — см. файл [`LICENSE`](LICENSE). Использование и адаптация разрешены
-с указанием авторства.
+Навык распространяется под двумя лицензиями, по типу содержимого:
+
+- **Текст и метод** — `SKILL.md`, `SKILL.ru.md`, папки `references/` и
+  `assets/`, файлы README, документация и данные в `examples/`: CC BY 4.0,
+  см. [`LICENSE`](LICENSE). Использование и адаптация разрешены с указанием
+  авторства.
+- **Код** — файлы Python в `scripts/`, `tests/` и `examples/` и workflow
+  в `.github/workflows/`: Apache License 2.0, см.
+  [`LICENSE-CODE`](LICENSE-CODE). Код можно использовать, изменять и
+  распространять, в том числе коммерчески, на условиях лицензии (сохранять
+  текст лицензии и уведомления; лицензия включает патентную оговорку).
 
 ## Автор
 

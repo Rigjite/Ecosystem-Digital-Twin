@@ -5,6 +5,7 @@
 [![Agent Skill](https://img.shields.io/badge/Agent_Skill-agentskills.io-6f42c1)](https://agentskills.io)
 ![Python 3.9+, standard library only](https://img.shields.io/badge/python-3.9%2B_stdlib_only-3776AB)
 [![License: CC BY 4.0](https://img.shields.io/badge/license-CC_BY_4.0-lightgrey)](LICENSE)
+[![Code: Apache 2.0](https://img.shields.io/badge/code-Apache_2.0-blue)](LICENSE-CODE)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23681769.svg)](https://doi.org/10.5281/zenodo.23681769)
 
 English | [Русский](README.ru.md)
@@ -20,7 +21,7 @@ touches the real system. It serves two uses, in this order: a **consulting
 product** for a client (a farm, a water-body manager, a conservation project,
 a municipality) and a **research instrument** for the operator's own science.
 
-Current version: **2.8** (2026-10-28). License: CC BY 4.0.
+Current version: **2.8** (2026-10-28). License: CC BY 4.0 for text and method, Apache-2.0 for code.
 
 The brand name is to be decided by the author; until then the skill is named descriptively, “Ecosystem Digital Twin by Rigjita Baldanova”.
 
@@ -198,7 +199,7 @@ threshold or fails to beat a naive baseline.
 
 ## Status and evaluation
 
-- **Automated:** 343 unit and end-to-end tests plus the package lint run on
+- **Automated:** 347 unit and end-to-end tests plus the package lint run on
   every push (see the tests badge). Run them locally with
   `python3 -m unittest discover -s tests` and `python3 tests/check_package.py`.
 - **Evaluation history:** every round, its scores, and the defects found and
@@ -235,8 +236,17 @@ DOI: [10.5281/zenodo.23681769](https://doi.org/10.5281/zenodo.23681769)
 
 ## License
 
-CC BY 4.0 — see [`LICENSE`](LICENSE). You may reuse and adapt the skill with
-attribution.
+The skill is dual-licensed by content type:
+
+- **Text and method** — `SKILL.md`, `SKILL.ru.md`, the `references/` and
+  `assets/` folders, the README files, and the documentation and data in
+  `examples/`: CC BY 4.0, see [`LICENSE`](LICENSE). You may reuse and adapt
+  them with attribution.
+- **Code** — the Python files in `scripts/`, `tests/` and `examples/`, and
+  the CI workflow in `.github/workflows/`: Apache License 2.0, see
+  [`LICENSE-CODE`](LICENSE-CODE). You may use, modify and redistribute it,
+  including commercially, under its terms (keep the licence and notices;
+  it includes a patent grant).
 
 ## Author
 

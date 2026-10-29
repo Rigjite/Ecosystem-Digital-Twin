@@ -1,7 +1,7 @@
 ---
 name: ecosystem-digital-twin
 description: "An Agent Skill for designing and operating evidence-bound digital twins and linked twin networks of ecosystems — ponds, lakes, rivers, wetlands, steppe and grassland, cropland, livestock farms, aquaculture, forests, peatlands, marine and coastal waters, urban ecosystems, deserts, tundra and cryosphere, air basins, and biodiversity sites. Guides the 7-stage build cycle (Phases 0–6), enforces strict separation between AI agents and deterministic code, implements counterfactual baselines, safety gates for circular-economy cascades, Value of Information (VoI) assessment, and RO-Crate provenance. Use when modeling an ecosystem, linking multi-ecosystem cascades, analyzing monitoring data, or evaluating environmental and agricultural intervention scenarios."
-license: CC-BY-4.0
+license: "CC-BY-4.0 for text and method; Apache-2.0 for code (scripts, tests, example code). See LICENSE and LICENSE-CODE."
 compatibility: "Bundled scripts need only Python 3.9+ and its standard library. scripts/evidence_search.py needs network access to PubMed, Europe PMC, OpenAlex, and Crossref. Open data (Copernicus Sentinel, Landsat, GBIF, ERA5, SoilGrids, national hydrology and meteo services) is fetched at build time with whatever access the environment has; GIS tooling (QGIS, geopandas) is optional; scripts/fetch_satellite.py needs network access to the Planetary Computer STAC API (search: no key; downloads: signed URLs)."
 metadata:
   version: "2.8"

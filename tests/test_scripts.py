@@ -4911,6 +4911,40 @@ class TestReleaseV28(unittest.TestCase):
             self.assertNotIn("ADIS", text)
 
 
+class TestDualLicenceV28(unittest.TestCase):
+    """T103 (2026-10-28): dual licence. Text and method under CC BY 4.0
+    (LICENSE unchanged), code under Apache-2.0 (LICENSE-CODE, canonical
+    text); README (EN/RU), SKILL frontmatter and CITATION state the split."""
+
+    def test_licence_files(self):
+        code = rtext(os.path.join(ROOT, "LICENSE-CODE"))
+        self.assertIn("Apache License", code)
+        self.assertIn("Version 2.0, January 2004", code)
+        self.assertIn("END OF TERMS AND CONDITIONS", code)
+        text = rtext(os.path.join(ROOT, "LICENSE"))
+        self.assertIn("Attribution 4.0 International", text)
+
+    def test_readme_licence_sections(self):
+        for fname in ("README.md", "README.ru.md"):
+            text = rtext(os.path.join(ROOT, fname))
+            self.assertIn("[`LICENSE-CODE`](LICENSE-CODE)", text)
+            self.assertIn("[`LICENSE`](LICENSE)", text)
+            self.assertIn("Apache License 2.0", text)
+            self.assertIn("CC BY 4.0", text)
+
+    def test_skill_frontmatter_names_both(self):
+        for fname in ("SKILL.md", "SKILL.ru.md"):
+            head = rtext(os.path.join(ROOT, fname)).split("\n---", 1)[0]
+            self.assertIn("CC-BY-4.0", head)
+            self.assertIn("Apache-2.0", head)
+
+    def test_citation_states_code_licence(self):
+        cff = rtext(os.path.join(ROOT, "CITATION.cff"))
+        self.assertIn("license: CC-BY-4.0", cff)
+        flat = " ".join(cff.split())
+        self.assertIn("under Apache-2.0 (LICENSE-CODE)", flat)
+
+
 class TestPackage(unittest.TestCase):
     def test_package_lint_passes(self):
         code, out, _ = run(os.path.join("..", "tests", "check_package.py"))

@@ -18,7 +18,9 @@ abstract: >-
   rules: data quality gate, trend tests, calibration against naive baselines,
   alert bands, uncertainty budgets, a pre-registered forecast registry,
   sensitive-species coordinate generalization, and RO-Crate 1.1 provenance
-  packages.
+  packages. Text and method are licensed under CC BY 4.0 (LICENSE); the
+  code (Python files in scripts/, tests/ and examples/, and the CI
+  workflow) under Apache-2.0 (LICENSE-CODE).
 keywords:
   - agent-skill
   - digital-twin

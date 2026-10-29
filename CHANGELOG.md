@@ -2,6 +2,17 @@
 
 ## v2.8 — 2026-10-28
 
+- **Dual licence (T103, 2026-10-28)** — the author's decision: text and
+  method stay under CC BY 4.0 (BY-ND not adopted); code is licensed under
+  Apache-2.0. Added `LICENSE-CODE` (the canonical Apache License 2.0
+  text, unchanged). Code means the Python files in scripts/, tests/ and
+  examples/, and the CI workflow in .github/workflows/; everything else
+  stays CC BY 4.0 (`LICENSE`, unchanged). README (EN/RU): licence
+  section, version line and a code-licence badge. SKILL.md and
+  SKILL.ru.md frontmatter `license` names both. CITATION.cff: the
+  `license` field stays CC-BY-4.0 (the Zenodo record licence) and the
+  abstract states the code licence. New test T103
+  (`TestDualLicenceV28`, 4 tests).
 - **Release edits (T102, 2026-10-28)** — Claude Anthropic, on the
   author's go-ahead to publish. (1) Release date set to 2026-10-28 in
   README (EN/RU), CITATION.cff and this file, matching SKILL.md. (2) DOI
